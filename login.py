@@ -15,24 +15,60 @@ class LoginWindow(QWidget) :
 
         self.setWindowTitle("Login Screen")     
         self.setGeometry(100,100,400,200)
+        
+        self.setStyleSheet("""
+            QWidget {
+                background-color: #f0f4f8;
+                font-family: Arial;
+                font-size: 14px;
+            }
+            QLabel {
+                font-weight: bold;
+                color: #333;
+                margin-top: 10px;
+            }
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #aaa;
+                border-radius: 5px;
+                background-color: #fff;
+            }
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                padding: 10px;
+                border: none;
+                border-radius: 5px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+        """)
+
 
         layout = QVBoxLayout()
-
+        
+        self.tc_label = QLabel("TC Kimlik Numarası")
         self.tc_no = QLineEdit(self)
         self.tc_no.setPlaceholderText("TC kimlik no giriniz")
+        self.sifre_label = QLabel("Şifre")
         self.sifre= QLineEdit (self)
-        self.sifre.setPlaceholderText("Sifrenizi giriniz")         
-
+        self.sifre.setPlaceholderText("Sifrenizi giriniz") 
+        self.sifre.setEchoMode(QLineEdit.Password) # *** seklinde gorulmesi icin
+        
         self.girisButton = QPushButton("Giris", self)
-        self.girisButton.clicked.connect(self.on_button_click)
+        self.girisButton.clicked.connect(self.giris_button_clicked)
 
+        layout.addWidget(self.tc_label)
         layout.addWidget(self.tc_no)
+        layout.addWidget(self.sifre_label)
         layout.addWidget(self.sifre) 
         layout.addWidget(self.girisButton)
-
+        
         self.setLayout(layout)
         
-    def on_button_click (self) : 
+    def giris_button_clicked (self) : 
         tc_no = self.tc_no.text()
         sifre = self.sifre.text()
         kullanici = session.query(Kullanici ).filter_by(
