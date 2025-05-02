@@ -24,12 +24,30 @@ class LoginWindow(QWidget) :
         self.sifre.setPlaceholderText("Sifrenizi giriniz")         
 
         self.girisButton = QPushButton("Giris", self)
+        self.girisButton.clicked.connect(self.on_button_click)
 
         layout.addWidget(self.tc_no)
         layout.addWidget(self.sifre) 
         layout.addWidget(self.girisButton)
 
         self.setLayout(layout)
+        
+    def on_button_click (self) : 
+        tc_no = self.tc_no.text()
+        sifre = self.sifre.text()
+        kullanici = session.query(Kullanici ).filter_by(
+            tc_kimlik_no=tc_no ,
+            sifre_hash = sifre  
+        ).first()
+        
+        if kullanici : 
+            print("Giris basarili.")
+            QMessageBox.information(self, "Basarili Giris", "Giris basarili ! Panele yonlendiriliyorsunuz.")
+            
+        else :
+            print ("Hatali TC veya parola.")    
+            QMessageBox.information(self, "Basarisiz Giris", " Hatali TC veya parola.")
+
 
 
 app = QApplication(sys.argv) 
