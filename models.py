@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Date, Text, LargeBinary, Boolean, Float, ForeignKey, TIMESTAMP
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
 
@@ -21,6 +21,10 @@ class Hasta_doktor(Base) :
     id = Column(Integer, primary_key=True)
     hasta_id = Column(Integer,ForeignKey(Kullanici.id, ondelete='CASCADE')) #referance kullanici_id
     doktor_id = Column(Integer, ForeignKey (Kullanici.id, ondelete='CASCADE'))
+    
+    hasta = relationship("Kullanici", foreign_keys=[hasta_id], backref="doktorlari")
+    doktor = relationship("Kullanici", foreign_keys=[doktor_id], backref="hastalari")
+
 
 class Olcum(Base) : 
     __tablename__ = 'olcum'
