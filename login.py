@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base, Kullanici
 import sys
+from doktor_panel import DoktorPanel
 
 engine = create_engine("postgresql+psycopg2://postgres:1234@localhost/glucosedb")
 Session = sessionmaker(bind=engine)
@@ -79,7 +80,14 @@ class LoginWindow(QWidget) :
         if kullanici : 
             print("Giris basarili.")
             QMessageBox.information(self, "Basarili Giris", "Giris basarili ! Panele yonlendiriliyorsunuz.")
-            
+            if (kullanici.rol == 'doktor') : 
+                self.hide()
+                self.doktor_panel = DoktorPanel(kullanici)
+                self.doktor_panel.show()
+          #  if (kullanici.rol == 'hasta' ): 
+           #     self.hide()
+           #     self.hasta_panel = HastaPanel(kullanici)
+            #    self.hasta_panel.show() 
         else :
             print ("Hatali TC veya parola.")    
             QMessageBox.information(self, "Basarisiz Giris", " Hatali TC veya parola.")
