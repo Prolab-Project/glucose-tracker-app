@@ -96,7 +96,7 @@ class LoginWindow(QWidget) :
             QMessageBox.information(self, "Basarili Giris", "Giris basarili ! Panele yonlendiriliyorsunuz.")
             if (kullanici.rol == 'doktor') : 
                 self.hide()
-                self.doktor_panel = DoktorPanel(kullanici)
+                self.doktor_panel = DoktorPanel(kullanici, kullanici.id,session)
                 self.doktor_panel.show()
           #  if (kullanici.rol == 'hasta' ): 
            #     self.hide()
