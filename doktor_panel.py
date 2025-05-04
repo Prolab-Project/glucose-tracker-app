@@ -9,7 +9,6 @@ import hashlib
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtCore import Qt
 
-
 class HastaListePenceresi(QWidget) :    
     def __init__(self, doktor_id, session):
         super().__init__()
@@ -19,10 +18,34 @@ class HastaListePenceresi(QWidget) :
         self.doktor = doktor_id
         self.session = session
         self.hasta_listesi = QListWidget()
+        self.hasta_listesi.setFixedWidth(600)
+        self.hasta_listesi.setStyleSheet("font-size: 16px; padding: 8px;")
+        self.layout = QHBoxLayout()  
 
-        layoutHastaListe= QVBoxLayout()
-        layoutHastaListe.addWidget(self.hasta_listesi)
-        self.setLayout(layoutHastaListe)
+        sol_layout = QVBoxLayout()
+
+        self.detay_paneli = QWidget()
+        self.detay_layout = QVBoxLayout()
+        self.detay_label = QLabel("Hasta bilgileri burada görünecek")
+        self.detay_layout.addWidget(self.detay_label)
+        self.olcum_ekle_btn = QPushButton("➕ Ölçüm Ekle")
+        self.goruntule_btn = QPushButton("📊 Ölçümleri Görüntüle")
+        self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
+
+        self.detay_layout.addWidget(self.olcum_ekle_btn)
+        self.detay_layout.addWidget(self.goruntule_btn)
+        self.detay_layout.addWidget(self.guncelle_btn)
+
+        baslik_label = QLabel("🩺 Hastalarım")
+        baslik_label.setStyleSheet("font-size: 28px; font-weight: bold; color: #2c3e50;")
+        self.detay_label.setStyleSheet("color: black; font-size: 16px;")
+
+        sol_layout.addWidget(baslik_label)
+        sol_layout.addWidget(self.hasta_listesi)
+        self.detay_paneli.setLayout(self.detay_layout)
+        self.layout.addWidget(self.detay_paneli)
+        self.layout.addLayout(sol_layout)
+        self.setLayout(self.layout)
         self.hastalari_getir()
 
         self.hasta_listesi.itemDoubleClicked.connect(self.hasta_detaylarini_goster)
@@ -31,19 +54,15 @@ class HastaListePenceresi(QWidget) :
         tc = item.text().split("TC: ")[-1]
         hasta = self.session.query(Kullanici).filter_by(tc_kimlik_no=tc).first()
 
-        if hasta:
-            detay = f"Ad: {hasta.ad}\nSoyad: {hasta.soyad}\nTC: {hasta.tc_kimlik_no}\nEmail: {hasta.eposta}\nDoğum Tarihi: {hasta.dogum_tarihi}"
-            detay_penceresi = QWidget()
-            detay_penceresi.setWindowTitle("Hasta Detayı")
-            detay_penceresi.setGeometry(200, 200, 300, 200)
-            layout = QVBoxLayout()
-            layout.addWidget(QLabel(detay))
-
-            detay_penceresi.setLayout(layout)
-            detay_penceresi.show()
-
-            self.detay_penceresi = detay_penceresi
-
+        if hasta:   
+            detay = (
+                f"<b>Ad:</b> {hasta.ad}<br>"
+                f"<b>Soyad:</b> {hasta.soyad}<br>"
+                f"<b>TC:</b> {hasta.tc_kimlik_no}<br>"
+                f"<b>Email:</b> {hasta.eposta}<br>"
+                f"<b>Doğum Tarihi:</b> {hasta.dogum_tarihi.strftime('%d.%m.%Y')}<br>"
+            )
+            self.detay_label.setText(detay)
 
     def hastalari_getir(self) : 
         print("sadasd")
@@ -162,7 +181,7 @@ class HastaEklePenceresi(QWidget):
         foto_hizalama.addWidget(self.foto_sil_button, alignment=Qt.AlignTop)
 
         foto_layout = QVBoxLayout()
-        foto_layout.addLayout(foto_hizalama)  # 👈 burada hizalı duracak
+        foto_layout.addLayout(foto_hizalama)  
         foto_layout.addWidget(self.foto_button)
 
         layout = QVBoxLayout()
@@ -204,6 +223,10 @@ class HastaEklePenceresi(QWidget):
         if sifre != sifre_tekrar  : 
             QMessageBox.warning(self, "Şifreler Eşleşmiyor", "Girdiğiniz şifreler eşleşmiyor. Lütfen kontrol ediniz.")
             return
+        if (len(tc)!=11) : 
+            QMessageBox.warning(self,"Geçersiz TC Kimlik NO", "TC kimlik NO 11 rakamdan az olamaz.")
+            return
+
         mevcut = self.session.query(Kullanici).filter_by(tc_kimlik_no=tc).first()
         if mevcut : 
             QMessageBox.warning(self, "Zaten var", "Bu TC'ye sahip hasta zaten sisteme kayıtlı.")
@@ -255,8 +278,6 @@ class HastaEklePenceresi(QWidget):
         self.foto_label.setText("Henüz fotoğraf yok")
         self.secilen_foto_path = None
         self.foto_sil_button.hide()  
-
-
 
     def get_input_style(self):
         return """
