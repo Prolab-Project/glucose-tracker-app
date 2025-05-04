@@ -62,12 +62,13 @@ class HastaListePenceresi(QWidget) :
             )
             self.detay_label.setText(detay)
 
-    def hastalari_getir(self) : 
-        print("sadasd")
-        eslesmeler= self.session.query(Hasta_doktor).filter_by(doktor_id=self.doktor.id).all()
-        for eslesme in eslesmeler: 
+    def hastalari_getir(self):
+        self.hasta_listesi.clear()  
+        eslesmeler = self.session.query(Hasta_doktor).filter_by(doktor_id=self.doktor.id).all()
+        for eslesme in eslesmeler:
             hasta = self.session.query(Kullanici).filter_by(id=eslesme.hasta_id).first()
-            self.hasta_listesi.addItem(f"{hasta.ad} {hasta.soyad} - TC: {hasta.tc_kimlik_no}")
+            if hasta: 
+                self.hasta_listesi.addItem(f"{hasta.ad} {hasta.soyad} - TC: {hasta.tc_kimlik_no}")
 
     def olcum_goruntule(self) : 
         eslesmeler = self.session.query(Olcum).filter_by()       
