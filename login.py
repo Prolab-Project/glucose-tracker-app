@@ -5,6 +5,8 @@ from sqlalchemy.orm import sessionmaker
 from models import Base, Kullanici
 import sys
 from doktor_panel import DoktorPanel
+from PyQt5.QtGui import QRegularExpressionValidator
+from PyQt5.QtCore import QRegularExpression
 
 engine = create_engine("postgresql+psycopg2://postgres:1234@localhost/glucosedb")
 Session = sessionmaker(bind=engine)
@@ -16,49 +18,34 @@ class LoginWindow(QWidget) :
 
         self.setWindowTitle("Login Screen")     
         self.setGeometry(100,100,400,200)
+        self.showMaximized()
         
         self.setStyleSheet("""
             QWidget {
-                background-color: #f0f4f8;
-                font-family: Arial;
-                font-size: 14px;
-            }
-            QLabel {
-                font-weight: bold;
-                color: #333;
-                margin-top: 10px;
-            }
-            QLineEdit {
-                padding: 8px;
-                border: 1px solid #aaa;
-                border-radius: 5px;
-                background-color: #fff;
-            }
-            QPushButton {
-                background-color: #4CAF50;
-                color: white;
-                padding: 10px;
-                border: none;
-                border-radius: 5px;
-                font-weight: bold;
-            }
-            QPushButton:hover {
-                background-color: #45a049;
+                background-image: url('arkaplan.jpg');
+                background-repeat: no-repeat;
+                background-position: center;
             }
         """)
-
 
         layout = QVBoxLayout()
         
         self.tc_label = QLabel("TC Kimlik Numarası")
         self.tc_no = QLineEdit(self)
         self.tc_no.setPlaceholderText("TC kimlik no giriniz")
+        self.tc_no.setMaxLength(11)
+        regex = QRegularExpression("^[0-9]{0,11}$")
+        self.tc_no.setValidator(QRegularExpressionValidator(regex))
+        self.tc_no.setStyleSheet(self.get_input_style())
+
         self.sifre_label = QLabel("Şifre")
         self.sifre= QLineEdit (self)
-        self.sifre.setPlaceholderText("Sifrenizi giriniz") 
+        self.sifre.setPlaceholderText("Sifrenizi giriniz")
+        self.sifre.setStyleSheet(self.get_input_style())
         self.sifre.setEchoMode(QLineEdit.Password) # *** seklinde gorulmesi icin
         
         self.girisButton = QPushButton("Giris", self)
+        self.girisButton.setStyleSheet(self.get_button_style())
         self.girisButton.clicked.connect(self.giris_button_clicked)
 
         layout.addWidget(self.tc_label)
@@ -68,7 +55,34 @@ class LoginWindow(QWidget) :
         layout.addWidget(self.girisButton)
         
         self.setLayout(layout)
-        
+    
+    def get_input_style(self):
+        return """
+        QLineEdit {
+            padding: 12px;
+            border: 2px solid #2980b9;
+            border-radius: 10px;
+            font-size: 16px;
+            background-color: #fdfefe;
+        }
+        QLineEdit:focus {
+            border-color: #1abc9c;
+        }
+        """
+
+    def get_button_style(self):
+        return """
+        QPushButton {
+            padding: 10px;
+            font-size: 16px;
+            background-color: #2980b9;
+            color: white;
+            border-radius: 10px;
+        }
+        QPushButton:hover {
+            background-color: #1abc9c;
+        }
+        """        
     def giris_button_clicked (self) : 
         tc_no = self.tc_no.text()
         sifre = self.sifre.text()
