@@ -6,6 +6,7 @@ from PyQt5.QtGui import QRegularExpressionValidator, QPixmap
 from PyQt5.QtCore import QRegularExpression, Qt
 from datetime import datetime
 import hashlib
+from PyQt5.QtGui import QPixmap
 
 class HastaListePenceresi(QWidget) :    
     def __init__(self, doktor_id, session):
@@ -24,8 +25,22 @@ class HastaListePenceresi(QWidget) :
 
         self.detay_paneli = QWidget()
         self.detay_layout = QVBoxLayout()
+        
+        self.profil_foto = QLabel()
+        self.profil_foto.setFixedSize(150, 150)
+        self.profil_foto.setStyleSheet("""
+            QLabel {
+                border: 2px solid #ccc;
+                border-radius: 75px;
+                background-color: #f0f0f0;
+            }
+        """)
+        self.profil_foto.setScaledContents(True)
+        
         self.detay_label = QLabel("Hasta bilgileri burada görünecek")
+        self.detay_layout.addWidget(self.profil_foto, alignment=Qt.AlignCenter)
         self.detay_layout.addWidget(self.detay_label)
+        
         self.olcum_ekle_btn = QPushButton("➕ Ölçüm Ekle")
         self.goruntule_btn = QPushButton("📊 Ölçümleri Görüntüle")
         self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
@@ -52,7 +67,25 @@ class HastaListePenceresi(QWidget) :
         tc = item.text().split("TC: ")[-1]
         hasta = self.session.query(Kullanici).filter_by(tc_kimlik_no=tc).first()
 
-        if hasta:   
+        if hasta:
+            if hasta.profil_resmi:
+                pixmap = QPixmap()
+                pixmap.loadFromData(hasta.profil_resmi)
+                rounded_pixmap = QPixmap(pixmap.size())
+                rounded_pixmap.fill(Qt.transparent)
+                self.profil_foto.setPixmap(pixmap)
+            else:
+                self.profil_foto.setText("👤")
+                self.profil_foto.setStyleSheet("""
+                    QLabel {
+                        border: 2px solid #ccc;
+                        border-radius: 75px;
+                        background-color: #f0f0f0;
+                        font-size: 72px;
+                        qproperty-alignment: AlignCenter;
+                    }
+                """)
+
             detay = (
                 f"<b>Ad:</b> {hasta.ad}<br>"
                 f"<b>Soyad:</b> {hasta.soyad}<br>"
@@ -252,6 +285,11 @@ class HastaEklePenceresi(QWidget):
             return        
 
         sifre_hash = hashlib.sha256(sifre.encode()).hexdigest()
+        profil_bytes =None
+        if hasattr(self,'secilen_foto_path') and self.secilen_foto_path : 
+            with open (self.secilen_foto_path, "rb") as f : 
+                profil_bytes= f.read()
+
         yeni_hasta= Kullanici  (
             tc_kimlik_no = tc,
             ad=ad, 
@@ -261,7 +299,7 @@ class HastaEklePenceresi(QWidget):
             eposta=eposta,
             cinsiyet=cinsiyet,
             rol= 'hasta',
-            profil_resmi = None
+            profil_resmi = profil_bytes
         )
         self.session.add(yeni_hasta)
         self.session.commit()
