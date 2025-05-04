@@ -7,6 +7,7 @@ import sys
 from doktor_panel import DoktorPanel
 from PyQt5.QtGui import QRegularExpressionValidator
 from PyQt5.QtCore import QRegularExpression
+import hashlib
 
 engine = create_engine("postgresql+psycopg2://postgres:1234@localhost/glucosedb")
 Session = sessionmaker(bind=engine)
@@ -86,9 +87,11 @@ class LoginWindow(QWidget) :
     def giris_button_clicked (self) : 
         tc_no = self.tc_no.text()
         sifre = self.sifre.text()
+        sifre_hash = hashlib.sha256(sifre.encode()).hexdigest()
+        
         kullanici = session.query(Kullanici ).filter_by(
             tc_kimlik_no=tc_no ,
-            sifre_hash = sifre  
+            sifre_hash = sifre_hash 
         ).first()
         
         if kullanici : 
