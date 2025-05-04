@@ -1,13 +1,11 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit,QMessageBox,QComboBox,QFileDialog,QGraphicsPixmapItem,QHBoxLayout
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from models import Kullanici, Hasta_doktor
-from PyQt5.QtGui import QRegularExpressionValidator
-from PyQt5.QtCore import QRegularExpression
+from models import Kullanici, Hasta_doktor, Olcum
+from PyQt5.QtGui import QRegularExpressionValidator, QPixmap
+from PyQt5.QtCore import QRegularExpression, Qt
 from datetime import datetime
 import hashlib
-from PyQt5.QtGui import QPixmap
-from PyQt5.QtCore import Qt
 
 class HastaListePenceresi(QWidget) :    
     def __init__(self, doktor_id, session):
@@ -71,12 +69,15 @@ class HastaListePenceresi(QWidget) :
             hasta = self.session.query(Kullanici).filter_by(id=eslesme.hasta_id).first()
             self.hasta_listesi.addItem(f"{hasta.ad} {hasta.soyad} - TC: {hasta.tc_kimlik_no}")
 
+    def olcum_goruntule(self) : 
+        eslesmeler = self.session.query(Olcum).filter_by()       
+
 class HastaEklePenceresi(QWidget): 
-    def __init__(self, doktor_id, session):
+    def __init__(self, doktor, session):
         super().__init__()
         self.setWindowTitle("Hasta Ekle")
         self.setGeometry(100,100,400,200)         
-        self.doktor =doktor_id
+        self.doktor = doktor  # doktor nesnesini sınıf değişkeni olarak sakla
         self.session = session
 
         self.tc_no_label = QLabel("TC Kimlik NO")
@@ -207,6 +208,17 @@ class HastaEklePenceresi(QWidget):
         ana_layout.addLayout(layout)
         self.setLayout(ana_layout)
 
+    def formu_temizle(self):
+        self.tc_no.clear()
+        self.ad.clear()
+        self.soyad.clear()
+        self.dogum_tarihi.clear()
+        self.eposta.clear()
+        self.sifre.clear()
+        self.sifre_tekrar.clear()
+        self.cinsiyet.setCurrentIndex(0)
+        self.foto_temizle()
+
     def HastaKayitOlustur(self): 
         tc=self.tc_no.text()
         ad= self.ad.text()
@@ -261,7 +273,9 @@ class HastaEklePenceresi(QWidget):
         self.session.commit()
 
         QMessageBox.information(self, "Başarılı", "Yeni hasta kaydınız başarıyla yapılmıştır.")
-        self.close()
+        self.formu_temizle()
+        if hasattr(self.parent(), 'hasta_listesine_git'):
+            self.parent().hasta_listesine_git()
 
     def foto_sec(self):
         dosya_path, _ = QFileDialog.getOpenFileName(
@@ -307,35 +321,57 @@ class HastaEklePenceresi(QWidget):
         }
         """                
                     
-class DoktorPanel(QWidget) : 
-    def __init__(self, doktor,doktor_id, session):
-            super().__init__()
-            self.setWindowTitle("Doktor Paneli")     
-            self.setGeometry(100,100,400,200)  
-            self.doktor = doktor
-            self.doktor_id =doktor_id
-            self.session = session
+class DoktorPanel(QWidget):
+    def __init__(self, doktor, doktor_id, session):
+        super().__init__()
+        self.setWindowTitle("Doktor Paneli")
+        self.setGeometry(100, 100, 800, 600)
+        self.doktor = doktor
+        self.doktor_id = doktor_id
+        self.session = session
 
-            self.label = QLabel(f"Hoş geldiniz Dr. {doktor.ad} {doktor.soyad}")
-            self.hasta_listesi = QListWidget()
-            self.hastaGoruntule = QPushButton("Hastalarımı Görüntüle ",self)
-            self.hastaGoruntule.clicked.connect(self.hasta_penceresini_ac)
+      
+        self.main_layout = QVBoxLayout()
+        
+      
+        self.label = QLabel(f"Hoş geldiniz Dr. {doktor.ad} {doktor.soyad}")
+        self.label.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        
+       
+        button_layout = QHBoxLayout()
+        
+        self.hastaGoruntule = QPushButton("Hastalarımı Görüntüle", self)
+        self.hastaEkleButton = QPushButton("Yeni Hasta Kaydı", self)
+        
+        self.hastaGoruntule.clicked.connect(self.hasta_listesine_git)
+        self.hastaEkleButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
+        
+        button_layout.addWidget(self.hastaGoruntule)
+        button_layout.addWidget(self.hastaEkleButton)
 
-            self.hastaEkleButton = QPushButton("Yeni Hasta Kaydı",self)
-            self.hastaEkleButton.clicked.connect(self.hasta_ekle_penceresini_ac)
+       
+        self.stacked_widget = QStackedWidget()
+        
+       
+        self.hasta_liste_widget = HastaListePenceresi(self.doktor, self.session)
+        self.stacked_widget.addWidget(self.hasta_liste_widget)
+        
+       
+        self.hasta_ekle_widget = HastaEklePenceresi(self.doktor, self.session)
+        self.stacked_widget.addWidget(self.hasta_ekle_widget)
+        
+     
+        self.main_layout.addWidget(self.label)
+        self.main_layout.addLayout(button_layout)
+        self.main_layout.addWidget(self.stacked_widget)
+        
+        self.setLayout(self.main_layout)
 
-            layout= QVBoxLayout()
-            layout.addWidget(self.hastaGoruntule)
-            layout.addWidget(self.label)
-            layout.addWidget(self.hasta_listesi)
-            layout.addWidget(self.hastaEkleButton)
-            self.setLayout(layout) 
+    def hasta_listesine_git(self):
+        self.hasta_liste_widget.hastalari_getir()  
+        self.stacked_widget.setCurrentIndex(0)  
 
-    def hasta_penceresini_ac(self)   : 
-           self.hasta_penceresi = HastaListePenceresi(self.doktor, self.session)
-           self.hasta_penceresi.show()
-    def hasta_ekle_penceresini_ac(self) : 
-            self.hasta_ekle_penceresi = HastaEklePenceresi(self.doktor, self.session)   
-            self.hasta_ekle_penceresi.show()    
-           
+    def hasta_listesini_yenile(self):
+        self.hasta_liste_widget.hastalari_getir()
+        self.stacked_widget.setCurrentIndex(0)
 
