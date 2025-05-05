@@ -7,6 +7,7 @@ from PyQt5.QtCore import QRegularExpression, Qt
 from datetime import datetime
 import hashlib
 from PyQt5.QtGui import QPixmap
+from styles import Styles
 
 class HastaListePenceresi(QWidget) :    
     def __init__(self, doktor_id, session):
@@ -42,8 +43,11 @@ class HastaListePenceresi(QWidget) :
         self.detay_layout.addWidget(self.detay_label)
         
         self.olcum_ekle_btn = QPushButton("➕ Ölçüm Ekle")
+        self.olcum_ekle_btn.setStyleSheet(Styles.get_button_style())
         self.goruntule_btn = QPushButton("📊 Ölçümleri Görüntüle")
+        self.goruntule_btn.setStyleSheet(Styles.get_button_style())
         self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
+        self.guncelle_btn.setStyleSheet(Styles.get_button_style())
 
         self.detay_layout.addWidget(self.olcum_ekle_btn)
         self.detay_layout.addWidget(self.goruntule_btn)
@@ -121,17 +125,17 @@ class HastaEklePenceresi(QWidget):
         self.tc_no.setMaxLength(11)
         regex = QRegularExpression("^[0-9]{0,11}$")
         self.tc_no.setValidator(QRegularExpressionValidator(regex))
-        self.tc_no.setStyleSheet(self.get_input_style())
+        self.tc_no.setStyleSheet(Styles.get_input_style())
 
         self.ad_label = QLabel ("Hasta Adı") 
         self.ad = QLineEdit(self)
         self.ad.setPlaceholderText("Hasta adını giriniz.") 
-        self.ad.setStyleSheet(self.get_input_style())
+        self.ad.setStyleSheet(Styles.get_input_style())
 
         self.soyad_label = QLabel("Hasta Soyadı") 
         self.soyad = QLineEdit(self)
         self.soyad.setPlaceholderText("Hasta soyadını giriniz") 
-        self.soyad.setStyleSheet(self.get_input_style())
+        self.soyad.setStyleSheet(Styles.get_input_style())
 
         self.cinsiyet_label = QLabel("Hasta Cinsiyeti")
         self.cinsiyet= QComboBox()
@@ -163,26 +167,26 @@ class HastaEklePenceresi(QWidget):
         self.dogum_tarihi_label = QLabel("Hasta Doğum Tarihi") 
         self.dogum_tarihi = QLineEdit(self)
         self.dogum_tarihi.setPlaceholderText("Hasta doğum tarihini giriniz. ")
-        self.dogum_tarihi.setStyleSheet(self.get_input_style())
+        self.dogum_tarihi.setStyleSheet(Styles.get_input_style())
 
         self.eposta_label= QLabel("Hasta E-posta adresi")
         self.eposta= QLineEdit(self)
         self.eposta.setPlaceholderText("Hasta epostası giriniz") 
-        self.eposta.setStyleSheet(self.get_input_style())
+        self.eposta.setStyleSheet(Styles.get_input_style())
 
         self.sifre_label = QLabel("Hasta Sifre")
         self.sifre = QLineEdit(self)
         self.sifre.setPlaceholderText("Hasta Sifresini giriniz")
-        self.sifre.setStyleSheet(self.get_input_style())
+        self.sifre.setStyleSheet(Styles.get_input_style())
 
         self.sifre_tekrar_label = QLabel("Hasta Sifre (Tekrar)")
         self.sifre_tekrar = QLineEdit(self)
         self.sifre_tekrar.setPlaceholderText("Hasta sifresini tekrar giriniz")
-        self.sifre_tekrar.setStyleSheet(self.get_input_style())
+        self.sifre_tekrar.setStyleSheet(Styles.get_input_style())
 
         self.kayit_button = QPushButton("Kayıt Oluştur",self)
         self.kayit_button.clicked.connect(self.HastaKayitOlustur)
-        self.kayit_button.setStyleSheet(self.get_button_style())
+        self.kayit_button.setStyleSheet(Styles.get_button_style())
 
         ana_layout = QHBoxLayout()
 
@@ -203,7 +207,7 @@ class HastaEklePenceresi(QWidget):
         self.foto_label.setScaledContents(True)
         self.foto_button = QPushButton("Fotoğraf Seç")
         self.foto_button.clicked.connect(self.foto_sec)
-        self.foto_button.setStyleSheet(self.get_button_style())
+        self.foto_button.setStyleSheet(Styles.get_button_style())
 
         self.foto_sil_button = QPushButton("❌")
         self.foto_sil_button.setFixedSize(24, 24)
@@ -332,34 +336,6 @@ class HastaEklePenceresi(QWidget):
         self.secilen_foto_path = None
         self.foto_sil_button.hide()  
 
-    def get_input_style(self):
-        return """
-        QLineEdit {
-            padding: 12px;
-            border: 2px solid #2980b9;
-            border-radius: 10px;
-            font-size: 16px;
-            background-color: #fdfefe;
-        }
-        QLineEdit:focus {
-            border-color: #1abc9c;
-        }
-        """
-
-    def get_button_style(self):
-        return """
-        QPushButton {
-            padding: 10px;
-            font-size: 16px;
-            background-color: #2980b9;
-            color: white;
-            border-radius: 10px;
-        }
-        QPushButton:hover {
-            background-color: #1abc9c;
-        }
-        """                
-                    
 class DoktorPanel(QWidget):
     def __init__(self, doktor, doktor_id, session):
         super().__init__()
@@ -380,7 +356,9 @@ class DoktorPanel(QWidget):
         button_layout = QHBoxLayout()
         
         self.hastaGoruntule = QPushButton("Hastalarımı Görüntüle", self)
+        self.hastaGoruntule.setStyleSheet(Styles.get_button_style())
         self.hastaEkleButton = QPushButton("Yeni Hasta Kaydı", self)
+        self.hastaEkleButton.setStyleSheet(Styles.get_button_style())
         
         self.hastaGoruntule.clicked.connect(self.hasta_listesine_git)
         self.hastaEkleButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
@@ -413,4 +391,3 @@ class DoktorPanel(QWidget):
     def hasta_listesini_yenile(self):
         self.hasta_liste_widget.hastalari_getir()
         self.stacked_widget.setCurrentIndex(0)
-

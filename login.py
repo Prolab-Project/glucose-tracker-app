@@ -8,6 +8,7 @@ from doktor_panel import DoktorPanel
 from PyQt5.QtGui import QRegularExpressionValidator
 from PyQt5.QtCore import QRegularExpression
 import hashlib
+from hasta_panel import HastaPanel
 
 engine = create_engine("postgresql+psycopg2://postgres:1234@localhost/glucosedb")
 Session = sessionmaker(bind=engine)
@@ -101,10 +102,10 @@ class LoginWindow(QWidget) :
                 self.hide()
                 self.doktor_panel = DoktorPanel(kullanici, kullanici.id,session)
                 self.doktor_panel.show()
-          #  if (kullanici.rol == 'hasta' ): 
-           #     self.hide()
-           #     self.hasta_panel = HastaPanel(kullanici)
-            #    self.hasta_panel.show() 
+            if (kullanici.rol == 'hasta' ): 
+                self.hide()
+                self.hasta_panel = HastaPanel(kullanici, kullanici.id, session)
+                self.hasta_panel.show() 
         else :
             print ("Hatali TC veya parola.")    
             QMessageBox.information(self, "Basarisiz Giris", " Hatali TC veya parola.")
