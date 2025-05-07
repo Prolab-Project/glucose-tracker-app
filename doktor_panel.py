@@ -348,7 +348,6 @@ class DoktorPanel(QWidget):
       
         self.main_layout = QVBoxLayout()
         
-      
         self.label = QLabel(f"Hoş geldiniz Dr. {doktor.ad} {doktor.soyad}")
         self.label.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
         
