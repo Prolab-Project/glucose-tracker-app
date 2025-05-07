@@ -1,0 +1,110 @@
+import psycopg2
+from datetime import datetime
+import hashlib
+
+class DatabaseManager:
+    def __init__(self):
+        self.conn = psycopg2.connect(
+            dbname="glucosedb",
+            user="postgres",
+            password="1234",
+            host="localhost"
+        )
+        self.cursor = self.conn.cursor()
+        
+    def __del__(self):
+        if hasattr(self, 'cursor'):
+            self.cursor.close()
+        if hasattr(self, 'conn'):
+            self.conn.close()
+            
+    def commit(self):
+        self.conn.commit()
+        
+    def rollback(self):
+        self.conn.rollback()
+        
+    def get_user_by_tc(self, tc_no, sifre_hash):
+        self.cursor.execute("""
+            SELECT * FROM kullanici 
+            WHERE tc_kimlik_no = %s AND sifre_hash = %s
+        """, (tc_no, sifre_hash))
+        return self.cursor.fetchone()
+    
+    def get_user_by_id(self, user_id):
+        self.cursor.execute("""
+            SELECT * FROM kullanici 
+            WHERE id = %s
+        """, (user_id,))
+        return self.cursor.fetchone()
+    
+    def get_doctor_patients(self, doctor_id):
+        self.cursor.execute("""
+            SELECT k.* FROM kullanici k
+            INNER JOIN hasta_doktor hd ON k.id = hd.hasta_id
+            WHERE hd.doktor_id = %s
+        """, (doctor_id,))
+        return self.cursor.fetchall()
+    
+    def add_patient(self, tc_no, ad, soyad, dogum_tarihi, sifre_hash, cinsiyet, eposta, profil_resmi=None):
+        try:
+            self.cursor.execute("""
+                INSERT INTO kullanici (tc_kimlik_no, ad, soyad, dogum_tarihi, sifre_hash, cinsiyet, rol, eposta, profil_resmi)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (tc_no, ad, soyad, dogum_tarihi, sifre_hash, cinsiyet, 'hasta', eposta, profil_resmi))
+            hasta_id = self.cursor.fetchone()[0]
+            self.commit()
+            return hasta_id
+        except Exception as e:
+            self.rollback()
+            raise e
+    
+    def add_patient_doctor_relation(self, doktor_id, hasta_id):
+        try:
+            self.cursor.execute("""
+                INSERT INTO hasta_doktor (doktor_id, hasta_id)
+                VALUES (%s, %s)
+            """, (doktor_id, hasta_id))
+            self.commit()
+        except Exception as e:
+            self.rollback()
+            raise e
+    
+    def update_user(self, user_id, ad, soyad, eposta, cinsiyet, profil_resmi=None):
+        try:
+            if profil_resmi:
+                self.cursor.execute("""
+                    UPDATE kullanici 
+                    SET ad = %s, soyad = %s, eposta = %s, cinsiyet = %s, profil_resmi = %s
+                    WHERE id = %s
+                """, (ad, soyad, eposta, cinsiyet, profil_resmi, user_id))
+            else:
+                self.cursor.execute("""
+                    UPDATE kullanici 
+                    SET ad = %s, soyad = %s, eposta = %s, cinsiyet = %s
+                    WHERE id = %s
+                """, (ad, soyad, eposta, cinsiyet, user_id))
+            self.commit()
+        except Exception as e:
+            self.rollback()
+            raise e
+    
+    def add_measurement(self, hasta_id, doktor_id, kan_seker_degeri, olcum_zamani):
+        try:
+            self.cursor.execute("""
+                INSERT INTO olcum (hasta_id, doktor_id, tarih_saat, kan_seker_degeri, olcum_zamani, ortalamaya_dahil)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (hasta_id, doktor_id, datetime.now(), kan_seker_degeri, olcum_zamani, True))
+            self.commit()
+        except Exception as e:
+            self.rollback()
+            raise e
+    
+    def get_patient_measurements(self, hasta_id):
+        self.cursor.execute("""
+            SELECT * FROM olcum 
+            WHERE hasta_id = %s 
+            ORDER BY tarih_saat DESC
+        """, (hasta_id,))
+        return self.cursor.fetchall() 

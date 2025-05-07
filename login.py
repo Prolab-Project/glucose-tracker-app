@@ -1,20 +1,15 @@
-
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from models import Base, Kullanici
 import sys
 from doktor_panel import DoktorPanel
 from PyQt5.QtGui import QRegularExpressionValidator
 from PyQt5.QtCore import QRegularExpression
 import hashlib
 from hasta_panel import HastaPanel
+from db_manager import DatabaseManager
 
-engine = create_engine("postgresql+psycopg2://postgres:1234@localhost/glucosedb")
-Session = sessionmaker(bind=engine)
-session = Session()
+db = DatabaseManager()
 
-class LoginWindow(QWidget) : 
+class LoginWindow(QWidget): 
     def __init__(self):
         super().__init__()
 
@@ -41,10 +36,10 @@ class LoginWindow(QWidget) :
         self.tc_no.setStyleSheet(self.get_input_style())
 
         self.sifre_label = QLabel("Şifre")
-        self.sifre= QLineEdit (self)
+        self.sifre = QLineEdit(self)
         self.sifre.setPlaceholderText("Sifrenizi giriniz")
         self.sifre.setStyleSheet(self.get_input_style())
-        self.sifre.setEchoMode(QLineEdit.Password) # *** seklinde gorulmesi icin
+        self.sifre.setEchoMode(QLineEdit.Password)
         
         self.girisButton = QPushButton("Giris", self)
         self.girisButton.setStyleSheet(self.get_button_style())
@@ -85,32 +80,42 @@ class LoginWindow(QWidget) :
             background-color: #1abc9c;
         }
         """        
-    def giris_button_clicked (self) : 
+    def giris_button_clicked(self): 
         tc_no = self.tc_no.text()
         sifre = self.sifre.text()
         sifre_hash = hashlib.sha256(sifre.encode()).hexdigest()
         
-        kullanici = session.query(Kullanici ).filter_by(
-            tc_kimlik_no=tc_no ,
-            sifre_hash = sifre_hash 
-        ).first()
+        kullanici = db.get_user_by_tc(tc_no, sifre_hash)
         
-        if kullanici : 
+        if kullanici: 
             print("Giris basarili.")
             QMessageBox.information(self, "Basarili Giris", "Giris basarili ! Panele yonlendiriliyorsunuz.")
-            if (kullanici.rol == 'doktor') : 
+            
+            # Kullanıcı bilgilerini sözlük olarak oluştur
+            kullanici_dict = {
+                'id': kullanici[0],
+                'tc_kimlik_no': kullanici[1],
+                'ad': kullanici[2],
+                'soyad': kullanici[3],
+                'dogum_tarihi': kullanici[4],
+                'sifre_hash': kullanici[5],
+                'cinsiyet': kullanici[6],
+                'rol': kullanici[7],
+                'eposta': kullanici[8],
+                'profil_resmi': kullanici[9]
+            }
+            
+            if kullanici_dict['rol'] == 'doktor': 
                 self.hide()
-                self.doktor_panel = DoktorPanel(kullanici, kullanici.id,session)
+                self.doktor_panel = DoktorPanel(kullanici_dict, kullanici_dict['id'], db)
                 self.doktor_panel.show()
-            if (kullanici.rol == 'hasta' ): 
+            elif kullanici_dict['rol'] == 'hasta': 
                 self.hide()
-                self.hasta_panel = HastaPanel(kullanici, kullanici.id, session)
+                self.hasta_panel = HastaPanel(kullanici_dict, kullanici_dict['id'], db)
                 self.hasta_panel.show() 
-        else :
-            print ("Hatali TC veya parola.")    
-            QMessageBox.information(self, "Basarisiz Giris", " Hatali TC veya parola.")
-
-
+        else:
+            print("Hatali TC veya parola.")    
+            QMessageBox.information(self, "Basarisiz Giris", "Hatali TC veya parola.")
 
 app = QApplication(sys.argv) 
 window = LoginWindow()

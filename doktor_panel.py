@@ -1,22 +1,18 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from models import Kullanici, Hasta_doktor, Olcum
 from PyQt5.QtGui import QRegularExpressionValidator, QPixmap
 from PyQt5.QtCore import QRegularExpression, Qt
 from datetime import datetime
 import hashlib
-from PyQt5.QtGui import QPixmap
 from styles import Styles
 
-class HastaListePenceresi(QWidget) :    
-    def __init__(self, doktor_id, session):
+class HastaListePenceresi(QWidget):    
+    def __init__(self, doktor, db):
         super().__init__()
 
         self.setWindowTitle("Hastalarım")    
         self.setGeometry(100,100,400,200)
-        self.doktor = doktor_id
-        self.session = session
+        self.doktor = doktor
+        self.db = db
         self.hasta_listesi = QListWidget()
         self.hasta_listesi.setFixedWidth(600)
         self.hasta_listesi.setStyleSheet("font-size: 16px; padding: 8px;")
@@ -69,12 +65,25 @@ class HastaListePenceresi(QWidget) :
     
     def hasta_detaylarini_goster(self, item):
         tc = item.text().split("TC: ")[-1]
-        hasta = self.session.query(Kullanici).filter_by(tc_kimlik_no=tc).first()
+        hasta = self.db.get_user_by_tc(tc, None)  
 
         if hasta:
-            if hasta.profil_resmi:
+            hasta_dict = {
+                'id': hasta[0],
+                'tc_kimlik_no': hasta[1],
+                'ad': hasta[2],
+                'soyad': hasta[3],
+                'dogum_tarihi': hasta[4],
+                'sifre_hash': hasta[5],
+                'cinsiyet': hasta[6],
+                'rol': hasta[7],
+                'eposta': hasta[8],
+                'profil_resmi': hasta[9]
+            }
+            
+            if hasta_dict['profil_resmi']:
                 pixmap = QPixmap()
-                pixmap.loadFromData(hasta.profil_resmi)
+                pixmap.loadFromData(hasta_dict['profil_resmi'])
                 rounded_pixmap = QPixmap(pixmap.size())
                 rounded_pixmap.fill(Qt.transparent)
                 self.profil_foto.setPixmap(pixmap)
@@ -91,35 +100,30 @@ class HastaListePenceresi(QWidget) :
                 """)
 
             detay = (
-                f"<b>Ad:</b> {hasta.ad}<br>"
-                f"<b>Soyad:</b> {hasta.soyad}<br>"
-                f"<b>TC:</b> {hasta.tc_kimlik_no}<br>"
-                f"<b>Email:</b> {hasta.eposta}<br>"
-                f"<b>Doğum Tarihi:</b> {hasta.dogum_tarihi.strftime('%d.%m.%Y')}<br>"
+                f"<b>Ad:</b> {hasta_dict['ad']}<br>"
+                f"<b>Soyad:</b> {hasta_dict['soyad']}<br>"
+                f"<b>TC:</b> {hasta_dict['tc_kimlik_no']}<br>"
+                f"<b>Email:</b> {hasta_dict['eposta']}<br>"
+                f"<b>Doğum Tarihi:</b> {hasta_dict['dogum_tarihi'].strftime('%d.%m.%Y')}<br>"
             )
             self.detay_label.setText(detay)
 
     def hastalari_getir(self):
         self.hasta_listesi.clear()  
-        eslesmeler = self.session.query(Hasta_doktor).filter_by(doktor_id=self.doktor.id).all()
-        for eslesme in eslesmeler:
-            hasta = self.session.query(Kullanici).filter_by(id=eslesme.hasta_id).first()
-            if hasta: 
-                self.hasta_listesi.addItem(f"{hasta.ad} {hasta.soyad} - TC: {hasta.tc_kimlik_no}")
-
-    def olcum_goruntule(self) : 
-        eslesmeler = self.session.query(Olcum).filter_by()       
+        hastalar = self.db.get_doctor_patients(self.doktor['id'])
+        for hasta in hastalar:
+            self.hasta_listesi.addItem(f"{hasta[2]} {hasta[3]} - TC: {hasta[1]}")
 
 class HastaEklePenceresi(QWidget): 
-    def __init__(self, doktor, session):
+    def __init__(self, doktor, db):
         super().__init__()
         self.setWindowTitle("Hasta Ekle")
         self.setGeometry(100,100,400,200)         
-        self.doktor = doktor  # doktor nesnesini sınıf değişkeni olarak sakla
-        self.session = session
+        self.doktor = doktor
+        self.db = db
 
         self.tc_no_label = QLabel("TC Kimlik NO")
-        self.tc_no= QLineEdit(self)
+        self.tc_no = QLineEdit(self)
         self.tc_no.setPlaceholderText("Hasta TC Kimlik NO")
 
         self.tc_no.setMaxLength(11)
@@ -127,7 +131,7 @@ class HastaEklePenceresi(QWidget):
         self.tc_no.setValidator(QRegularExpressionValidator(regex))
         self.tc_no.setStyleSheet(Styles.get_input_style())
 
-        self.ad_label = QLabel ("Hasta Adı") 
+        self.ad_label = QLabel("Hasta Adı") 
         self.ad = QLineEdit(self)
         self.ad.setPlaceholderText("Hasta adını giriniz.") 
         self.ad.setStyleSheet(Styles.get_input_style())
@@ -138,8 +142,8 @@ class HastaEklePenceresi(QWidget):
         self.soyad.setStyleSheet(Styles.get_input_style())
 
         self.cinsiyet_label = QLabel("Hasta Cinsiyeti")
-        self.cinsiyet= QComboBox()
-        self.cinsiyet.addItems(["Erkek","Kadın"]) #baska cinsiyet yoktur
+        self.cinsiyet = QComboBox()
+        self.cinsiyet.addItems(["Erkek","Kadın"])
         self.cinsiyet.setStyleSheet("""
             QComboBox {
                 padding: 8px;
@@ -158,7 +162,7 @@ class HastaEklePenceresi(QWidget):
                 border-left: 1px solid #2980b9;
             }
             QComboBox::down-arrow {
-                image: url(down-arrow.png);  /* istersen ikon koyarız */
+                image: url(down-arrow.png);
                 width: 14px;
                 height: 14px;
             }
@@ -169,8 +173,8 @@ class HastaEklePenceresi(QWidget):
         self.dogum_tarihi.setPlaceholderText("Hasta doğum tarihini giriniz. ")
         self.dogum_tarihi.setStyleSheet(Styles.get_input_style())
 
-        self.eposta_label= QLabel("Hasta E-posta adresi")
-        self.eposta= QLineEdit(self)
+        self.eposta_label = QLabel("Hasta E-posta adresi")
+        self.eposta = QLineEdit(self)
         self.eposta.setPlaceholderText("Hasta epostası giriniz") 
         self.eposta.setStyleSheet(Styles.get_input_style())
 
@@ -184,7 +188,7 @@ class HastaEklePenceresi(QWidget):
         self.sifre_tekrar.setPlaceholderText("Hasta sifresini tekrar giriniz")
         self.sifre_tekrar.setStyleSheet(Styles.get_input_style())
 
-        self.kayit_button = QPushButton("Kayıt Oluştur",self)
+        self.kayit_button = QPushButton("Kayıt Oluştur", self)
         self.kayit_button.clicked.connect(self.HastaKayitOlustur)
         self.kayit_button.setStyleSheet(Styles.get_button_style())
 
@@ -215,7 +219,6 @@ class HastaEklePenceresi(QWidget):
         self.foto_sil_button.clicked.connect(self.foto_temizle)
         self.foto_sil_button.hide()
         
-        # aynı satıra ekle
         foto_hizalama.addWidget(self.foto_label)
         foto_hizalama.addWidget(self.foto_sil_button, alignment=Qt.AlignTop)
 
@@ -258,30 +261,25 @@ class HastaEklePenceresi(QWidget):
         self.foto_temizle()
 
     def HastaKayitOlustur(self): 
-        tc=self.tc_no.text()
-        ad= self.ad.text()
+        tc = self.tc_no.text()
+        ad = self.ad.text()
         soyad = self.soyad.text()
         dogum_tarihi = self.dogum_tarihi.text()
-        eposta= self.eposta.text()
+        eposta = self.eposta.text()
         sifre = self.sifre.text()
-        sifre_tekrar =self.sifre_tekrar.text()
+        sifre_tekrar = self.sifre_tekrar.text()
         cinsiyet = self.cinsiyet.currentText()
 
-        if not all([tc, ad, soyad, dogum_tarihi, eposta, sifre, sifre_tekrar,cinsiyet, ]):
+        if not all([tc, ad, soyad, dogum_tarihi, eposta, sifre, sifre_tekrar, cinsiyet]):
             QMessageBox.warning(self, "Eksik Bilgi", "Lütfen tüm alanları doldurun.")
             return        
-        if sifre != sifre_tekrar  : 
+        if sifre != sifre_tekrar:
             QMessageBox.warning(self, "Şifreler Eşleşmiyor", "Girdiğiniz şifreler eşleşmiyor. Lütfen kontrol ediniz.")
             return
-        if (len(tc)!=11) : 
-            QMessageBox.warning(self,"Geçersiz TC Kimlik NO", "TC kimlik NO 11 rakamdan az olamaz.")
+        if len(tc) != 11:
+            QMessageBox.warning(self, "Geçersiz TC Kimlik NO", "TC kimlik NO 11 rakamdan az olamaz.")
             return
 
-        mevcut = self.session.query(Kullanici).filter_by(tc_kimlik_no=tc).first()
-        if mevcut : 
-            QMessageBox.warning(self, "Zaten var", "Bu TC'ye sahip hasta zaten sisteme kayıtlı.")
-            return
-        
         try:
             dogum_tarihi = datetime.strptime(dogum_tarihi, "%d.%m.%Y").date()
         except ValueError:
@@ -289,36 +287,21 @@ class HastaEklePenceresi(QWidget):
             return        
 
         sifre_hash = hashlib.sha256(sifre.encode()).hexdigest()
-        profil_bytes =None
-        if hasattr(self,'secilen_foto_path') and self.secilen_foto_path : 
-            with open (self.secilen_foto_path, "rb") as f : 
-                profil_bytes= f.read()
+        profil_bytes = None
+        if hasattr(self, 'secilen_foto_path') and self.secilen_foto_path:
+            with open(self.secilen_foto_path, "rb") as f:
+                profil_bytes = f.read()
 
-        yeni_hasta= Kullanici  (
-            tc_kimlik_no = tc,
-            ad=ad, 
-            soyad= soyad,
-            dogum_tarihi = dogum_tarihi,
-            sifre_hash= sifre_hash,
-            eposta=eposta,
-            cinsiyet=cinsiyet,
-            rol= 'hasta',
-            profil_resmi = profil_bytes
-        )
-        self.session.add(yeni_hasta)
-        self.session.commit()
-
-        eslesme = Hasta_doktor(
-            doktor_id= self.doktor.id,
-            hasta_id = yeni_hasta.id
-        )
-        self.session.add(eslesme)
-        self.session.commit()
-
-        QMessageBox.information(self, "Başarılı", "Yeni hasta kaydınız başarıyla yapılmıştır.")
-        self.formu_temizle()
-        if hasattr(self.parent(), 'hasta_listesine_git'):
-            self.parent().hasta_listesine_git()
+        try:
+            hasta_id = self.db.add_patient(tc, ad, soyad, dogum_tarihi, sifre_hash, cinsiyet, eposta, profil_bytes)
+            self.db.add_patient_doctor_relation(self.doktor['id'], hasta_id)
+            
+            QMessageBox.information(self, "Başarılı", "Yeni hasta kaydınız başarıyla yapılmıştır.")
+            self.formu_temizle()
+            if hasattr(self.parent(), 'hasta_listesine_git'):
+                self.parent().hasta_listesine_git()
+        except Exception as e:
+            QMessageBox.warning(self, "Hata", f"Hasta kaydı oluşturulurken bir hata oluştu: {str(e)}")
 
     def foto_sec(self):
         dosya_path, _ = QFileDialog.getOpenFileName(
@@ -334,24 +317,22 @@ class HastaEklePenceresi(QWidget):
         self.foto_label.clear()
         self.foto_label.setText("Henüz fotoğraf yok")
         self.secilen_foto_path = None
-        self.foto_sil_button.hide()  
+        self.foto_sil_button.hide()
 
 class DoktorPanel(QWidget):
-    def __init__(self, doktor, doktor_id, session):
+    def __init__(self, doktor, doktor_id, db):
         super().__init__()
         self.setWindowTitle("Doktor Paneli")
         self.setGeometry(100, 100, 800, 600)
         self.doktor = doktor
         self.doktor_id = doktor_id
-        self.session = session
+        self.db = db
 
-      
         self.main_layout = QVBoxLayout()
         
-        self.label = QLabel(f"Hoş geldiniz Dr. {doktor.ad} {doktor.soyad}")
+        self.label = QLabel(f"Hoş geldiniz Dr. {doktor['ad']} {doktor['soyad']}")
         self.label.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
         
-       
         button_layout = QHBoxLayout()
         
         self.hastaGoruntule = QPushButton("Hastalarımı Görüntüle", self)
@@ -365,18 +346,14 @@ class DoktorPanel(QWidget):
         button_layout.addWidget(self.hastaGoruntule)
         button_layout.addWidget(self.hastaEkleButton)
 
-       
         self.stacked_widget = QStackedWidget()
         
-       
-        self.hasta_liste_widget = HastaListePenceresi(self.doktor, self.session)
+        self.hasta_liste_widget = HastaListePenceresi(self.doktor, self.db)
         self.stacked_widget.addWidget(self.hasta_liste_widget)
         
-       
-        self.hasta_ekle_widget = HastaEklePenceresi(self.doktor, self.session)
+        self.hasta_ekle_widget = HastaEklePenceresi(self.doktor, self.db)
         self.stacked_widget.addWidget(self.hasta_ekle_widget)
         
-     
         self.main_layout.addWidget(self.label)
         self.main_layout.addLayout(button_layout)
         self.main_layout.addWidget(self.stacked_widget)
@@ -385,7 +362,7 @@ class DoktorPanel(QWidget):
 
     def hasta_listesine_git(self):
         self.hasta_liste_widget.hastalari_getir()  
-        self.stacked_widget.setCurrentIndex(0)  
+        self.stacked_widget.setCurrentIndex(0)
 
     def hasta_listesini_yenile(self):
         self.hasta_liste_widget.hastalari_getir()
