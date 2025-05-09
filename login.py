@@ -1,8 +1,8 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox, QHBoxLayout
+from PyQt5.QtGui import QRegularExpressionValidator, QPixmap, QFont
+from PyQt5.QtCore import QRegularExpression, Qt
 import sys
 from doktor_panel import DoktorPanel
-from PyQt5.QtGui import QRegularExpressionValidator
-from PyQt5.QtCore import QRegularExpression
 import hashlib
 from hasta_panel import HastaPanel
 from db_manager import DatabaseManager
@@ -13,21 +13,92 @@ class LoginWindow(QWidget):
     def __init__(self):
         super().__init__()
 
-        self.setWindowTitle("Login Screen")     
-        self.setGeometry(100,100,400,200)
+        self.setWindowTitle("Diyabet Takip Uygulaması")     
+        self.setGeometry(100,100,800,600)
         self.showMaximized()
         
         self.setStyleSheet("""
             QWidget {
-                background-image: url('arkaplan.jpg');
-                background-repeat: no-repeat;
-                background-position: center;
+                background-color: #1a1a1a;
+            }
+            QLabel {
+                color: #ffffff;
             }
         """)
 
-        layout = QVBoxLayout()
+        main_layout = QHBoxLayout()
+        
+        left_layout = QVBoxLayout()
+        left_widget = QWidget()
+        left_widget.setStyleSheet("""
+            QWidget {
+                background-color: #2c3e50;
+                border-radius: 20px;
+            }
+        """)
+        
+        logo_label = QLabel("🩺")
+        logo_label.setStyleSheet("""
+            QLabel {
+                font-size: 120px;
+                color: #3498db;
+            }
+        """)
+        logo_label.setAlignment(Qt.AlignCenter)
+        
+        title_label = QLabel("Diyabet Takip\nUygulaması")
+        title_label.setStyleSheet("""
+            QLabel {
+                font-size: 36px;
+                font-weight: bold;
+                color: #ffffff;
+            }
+        """)
+        title_label.setAlignment(Qt.AlignCenter)
+        
+        subtitle_label = QLabel("Sağlığınız bizimle güvende")
+        subtitle_label.setStyleSheet("""
+            QLabel {
+                font-size: 18px;
+                color: #bdc3c7;
+            }
+        """)
+        subtitle_label.setAlignment(Qt.AlignCenter)
+        
+        left_layout.addStretch()
+        left_layout.addWidget(logo_label)
+        left_layout.addWidget(title_label)
+        left_layout.addWidget(subtitle_label)
+        left_layout.addStretch()
+        
+        left_widget.setLayout(left_layout)
+        left_widget.setFixedWidth(400)
+        
+        right_layout = QVBoxLayout()
+        right_widget = QWidget()
+        right_widget.setStyleSheet("""
+            QWidget {
+                background-color: #2c3e50;
+                border-radius: 20px;
+            }
+        """)
+        
+        form_layout = QVBoxLayout()
+        form_layout.setSpacing(20)
+        
+        welcome_label = QLabel("Hoş Geldiniz")
+        welcome_label.setStyleSheet("""
+            QLabel {
+                font-size: 32px;
+                font-weight: bold;
+                color: #ffffff;
+                margin-bottom: 20px;
+            }
+        """)
+        welcome_label.setAlignment(Qt.AlignCenter)
         
         self.tc_label = QLabel("TC Kimlik Numarası")
+        self.tc_label.setStyleSheet("font-size: 14px; color: #bdc3c7;")
         self.tc_no = QLineEdit(self)
         self.tc_no.setPlaceholderText("TC kimlik no giriniz")
         self.tc_no.setMaxLength(11)
@@ -36,48 +107,66 @@ class LoginWindow(QWidget):
         self.tc_no.setStyleSheet(self.get_input_style())
 
         self.sifre_label = QLabel("Şifre")
+        self.sifre_label.setStyleSheet("font-size: 14px; color: #bdc3c7;")
         self.sifre = QLineEdit(self)
-        self.sifre.setPlaceholderText("Sifrenizi giriniz")
+        self.sifre.setPlaceholderText("Şifrenizi giriniz")
         self.sifre.setStyleSheet(self.get_input_style())
         self.sifre.setEchoMode(QLineEdit.Password)
         
-        self.girisButton = QPushButton("Giris", self)
+        self.girisButton = QPushButton("Giriş Yap", self)
         self.girisButton.setStyleSheet(self.get_button_style())
         self.girisButton.clicked.connect(self.giris_button_clicked)
-
-        layout.addWidget(self.tc_label)
-        layout.addWidget(self.tc_no)
-        layout.addWidget(self.sifre_label)
-        layout.addWidget(self.sifre) 
-        layout.addWidget(self.girisButton)
         
-        self.setLayout(layout)
+        form_layout.addWidget(welcome_label)
+        form_layout.addWidget(self.tc_label)
+        form_layout.addWidget(self.tc_no)
+        form_layout.addWidget(self.sifre_label)
+        form_layout.addWidget(self.sifre)
+        form_layout.addWidget(self.girisButton)
+        form_layout.addStretch()
+        
+        right_widget.setLayout(form_layout)
+        
+        main_layout.addWidget(left_widget)
+        main_layout.addWidget(right_widget)
+        
+        self.setLayout(main_layout)
     
     def get_input_style(self):
         return """
         QLineEdit {
-            padding: 12px;
-            border: 2px solid #2980b9;
+            padding: 15px;
+            border: 2px solid #34495e;
             border-radius: 10px;
             font-size: 16px;
-            background-color: #fdfefe;
+            background-color: #34495e;
+            color: #ffffff;
         }
         QLineEdit:focus {
-            border-color: #1abc9c;
+            border-color: #3498db;
+            background-color: #2c3e50;
+        }
+        QLineEdit::placeholder {
+            color: #95a5a6;
         }
         """
 
     def get_button_style(self):
         return """
         QPushButton {
-            padding: 10px;
+            padding: 15px;
             font-size: 16px;
-            background-color: #2980b9;
+            font-weight: bold;
+            background-color: #3498db;
             color: white;
             border-radius: 10px;
+            border: none;
         }
         QPushButton:hover {
-            background-color: #1abc9c;
+            background-color: #2980b9;
+        }
+        QPushButton:pressed {
+            background-color: #2471a3;
         }
         """        
     def giris_button_clicked(self): 
@@ -89,9 +178,8 @@ class LoginWindow(QWidget):
         
         if kullanici: 
             print("Giris basarili.")
-            QMessageBox.information(self, "Basarili Giris", "Giris basarili ! Panele yonlendiriliyorsunuz.")
+            QMessageBox.information(self, "Başarılı Giriş", "Giriş başarılı! Panele yönlendiriliyorsunuz.")
             
-            # Kullanıcı bilgilerini sözlük olarak oluştur
             kullanici_dict = {
                 'id': kullanici[0],
                 'tc_kimlik_no': kullanici[1],
@@ -115,10 +203,9 @@ class LoginWindow(QWidget):
                 self.hasta_panel.show() 
         else:
             print("Hatali TC veya parola.")    
-            QMessageBox.information(self, "Basarisiz Giris", "Hatali TC veya parola.")
+            QMessageBox.warning(self, "Başarısız Giriş", "Hatalı TC veya parola.")
 
 app = QApplication(sys.argv) 
 window = LoginWindow()
 window.show()       
-
 sys.exit(app.exec_())
