@@ -164,4 +164,13 @@ class DatabaseManager:
             WHERE hasta_id = %s 
             ORDER BY tarih DESC
         """, (hasta_id,))
+        return self.cursor.fetchall()
+    
+    def get_patient_insulin(self, hasta_id, baslangic_tarih, bitis_tarih):
+        self.cursor.execute("""
+            SELECT * FROM insulin 
+            WHERE hasta_id = %s 
+            AND tarih BETWEEN %s AND %s
+            ORDER BY tarih DESC
+        """, (hasta_id, baslangic_tarih, bitis_tarih))
         return self.cursor.fetchall() 

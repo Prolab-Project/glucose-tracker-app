@@ -1,9 +1,13 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget, QDateEdit, QTimeEdit, QSpinBox
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget, QDateEdit, QTimeEdit, QSpinBox, QProgressBar, QFrame
 from PyQt5.QtGui import QRegularExpressionValidator, QPixmap
 from PyQt5.QtCore import QRegularExpression, Qt, QDate, QTime
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 from styles import Styles
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import numpy as np
 
 class BilgilerimPenceresi(QWidget):
     def __init__(self, hasta, db):
@@ -65,10 +69,11 @@ class BilgilerimPenceresi(QWidget):
         self.bilgi_label.setText(detay)
 
 class EgzersizTakipPenceresi(QWidget):
-    def __init__(self, hasta, db):
+    def __init__(self, hasta, db, dashboard=None):
         super().__init__()
         self.hasta = hasta
         self.db = db
+        self.dashboard = dashboard
         
         layout = QVBoxLayout()
         
@@ -111,14 +116,17 @@ class EgzersizTakipPenceresi(QWidget):
                 self.durum.currentText() == "Yapıldı"
             )
             QMessageBox.information(self, "Başarılı", "Egzersiz durumu kaydedildi.")
+            if self.dashboard:
+                self.dashboard.verileri_guncelle()
         except Exception as e:
             QMessageBox.warning(self, "Hata", f"Egzersiz kaydedilirken bir hata oluştu: {str(e)}")
 
 class DiyetTakipPenceresi(QWidget):
-    def __init__(self, hasta, db):
+    def __init__(self, hasta, db, dashboard=None):
         super().__init__()
         self.hasta = hasta
         self.db = db
+        self.dashboard = dashboard
         
         layout = QVBoxLayout()
         
@@ -161,6 +169,8 @@ class DiyetTakipPenceresi(QWidget):
                 self.durum.currentText() == "Uygulandı"
             )
             QMessageBox.information(self, "Başarılı", "Diyet durumu kaydedildi.")
+            if self.dashboard:
+                self.dashboard.verileri_guncelle()
         except Exception as e:
             QMessageBox.warning(self, "Hata", f"Diyet kaydedilirken bir hata oluştu: {str(e)}")
 
@@ -217,11 +227,13 @@ class BelirtiTakipPenceresi(QWidget):
             QMessageBox.warning(self, "Hata", f"Belirti kaydedilirken bir hata oluştu: {str(e)}")
 
 class KanSekeriOlcumPenceresi(QWidget):
-    def __init__(self, hasta, db):
+    def __init__(self, hasta, db, dashboard=None):
         super().__init__()
         self.hasta = hasta
         self.db = db
+        self.dashboard = dashboard
         
+
         layout = QVBoxLayout()
         
         baslik = QLabel("🩸 Kan Şekeri Ölçümü")
@@ -273,8 +285,196 @@ class KanSekeriOlcumPenceresi(QWidget):
                 self.olcum_zamani.currentText()
             )
             QMessageBox.information(self, "Başarılı", "Kan şekeri ölçümü kaydedildi.")
+            if self.dashboard:
+                self.dashboard.verileri_guncelle()
         except Exception as e:
             QMessageBox.warning(self, "Hata", f"Ölçüm kaydedilirken bir hata oluştu: {str(e)}")
+
+class DashboardPenceresi(QWidget):
+    def __init__(self, hasta, db):
+        super().__init__()
+        self.hasta = hasta
+        self.db = db
+        
+        layout = QVBoxLayout()
+        
+        
+        baslik = QLabel("📊 Günlük Özet")
+        baslik.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        layout.addWidget(baslik)
+        
+        kan_sekeri_frame = QFrame()
+        kan_sekeri_frame.setStyleSheet("""
+            QFrame {
+                background-color: #2c3e50;
+                border-radius: 10px;
+                padding: 15px;
+            }
+        """)
+        kan_sekeri_layout = QVBoxLayout()
+        
+        self.kan_sekeri_label = QLabel("Günlük Kan Şekeri Ortalaması: -- mg/dL")
+        self.kan_sekeri_label.setStyleSheet("color: white; font-size: 16px;")
+        kan_sekeri_layout.addWidget(self.kan_sekeri_label)
+        
+        self.degerler_label = QLabel()
+        self.degerler_label.setStyleSheet("color: white; font-size: 14px;")
+        kan_sekeri_layout.addWidget(self.degerler_label)
+        
+        kan_sekeri_frame.setLayout(kan_sekeri_layout)
+        layout.addWidget(kan_sekeri_frame)
+        
+        takip_frame = QFrame()
+        takip_frame.setStyleSheet("""
+            QFrame {
+                background-color: #2c3e50;
+                border-radius: 10px;
+                padding: 15px;
+            }
+        """)
+        takip_layout = QVBoxLayout()
+        
+        egzersiz_label = QLabel("Egzersiz Hedefi")
+        egzersiz_label.setStyleSheet("color: white; font-size: 16px;")
+        self.egzersiz_progress = QProgressBar()
+        self.egzersiz_progress.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid #34495e;
+                border-radius: 5px;
+                text-align: center;
+                height: 25px;
+            }
+            QProgressBar::chunk {
+                background-color: #3498db;
+            }
+        """)
+        takip_layout.addWidget(egzersiz_label)
+        takip_layout.addWidget(self.egzersiz_progress)
+        
+        diyet_label = QLabel("Diyet Hedefi")
+        diyet_label.setStyleSheet("color: white; font-size: 16px;")
+        self.diyet_progress = QProgressBar()
+        self.diyet_progress.setStyleSheet("""
+            QProgressBar {
+                border: 2px solid #34495e;
+                border-radius: 5px;
+                text-align: center;
+                height: 25px;
+            }
+            QProgressBar::chunk {
+                background-color: #2ecc71;
+            }
+        """)
+        takip_layout.addWidget(diyet_label)
+        takip_layout.addWidget(self.diyet_progress)
+        
+        takip_frame.setLayout(takip_layout)
+        layout.addWidget(takip_frame)
+        
+        insulin_frame = QFrame()
+        insulin_frame.setStyleSheet("""
+            QFrame {
+                background-color: #2c3e50;
+                border-radius: 10px;
+                padding: 15px;
+            }
+        """)
+        insulin_layout = QVBoxLayout()
+        
+        insulin_baslik = QLabel("💉 İnsülin Takibi")
+        insulin_baslik.setStyleSheet("color: white; font-size: 16px;")
+        insulin_layout.addWidget(insulin_baslik)
+        
+        # Tarih filtresi
+        tarih_layout = QHBoxLayout()
+        self.baslangic_tarihi = QDateEdit()
+        self.baslangic_tarihi.setDate(QDate.currentDate().addDays(-7))
+        self.baslangic_tarihi.setStyleSheet(Styles.get_input_style())
+        
+        self.bitis_tarihi = QDateEdit()
+        self.bitis_tarihi.setDate(QDate.currentDate())
+        self.bitis_tarihi.setStyleSheet(Styles.get_input_style())
+        
+        self.filtrele_btn = QPushButton("Filtrele")
+        self.filtrele_btn.setStyleSheet(Styles.get_button_style())
+        self.filtrele_btn.clicked.connect(self.insulin_filtrele)
+        
+        tarih_layout.addWidget(QLabel("Başlangıç:"))
+        tarih_layout.addWidget(self.baslangic_tarihi)
+        tarih_layout.addWidget(QLabel("Bitiş:"))
+        tarih_layout.addWidget(self.bitis_tarihi)
+        tarih_layout.addWidget(self.filtrele_btn)
+        
+        insulin_layout.addLayout(tarih_layout)
+        
+        self.insulin_listesi = QListWidget()
+        self.insulin_listesi.setStyleSheet("""
+            QListWidget {
+                background-color: #34495e;
+                border: none;
+                border-radius: 5px;
+                color: white;
+                font-size: 14px;
+            }
+            QListWidget::item {
+                padding: 10px;
+                border-bottom: 1px solid #2c3e50;
+            }
+        """)
+        insulin_layout.addWidget(self.insulin_listesi)
+        
+        insulin_frame.setLayout(insulin_layout)
+        layout.addWidget(insulin_frame)
+        
+        self.setLayout(layout)
+        self.verileri_guncelle()
+    
+    def verileri_guncelle(self):
+        bugun = datetime.now().date()
+        olcumler = self.db.get_patient_measurements(self.hasta['id'])
+        bugun_olcumler = [o for o in olcumler if o[3].date() == bugun]
+        
+        if bugun_olcumler:
+            ortalama = sum(o[4] for o in bugun_olcumler) / len(bugun_olcumler)
+            self.kan_sekeri_label.setText(f"Günlük Kan Şekeri Ortalaması: {ortalama:.1f} mg/dL")
+            
+            degerler_text = "Günlük Ölçümler:\n"
+            for olcum in bugun_olcumler:
+                saat = olcum[3].time().strftime('%H:%M')
+                deger = olcum[4]
+                zamani = olcum[5]
+                degerler_text += f"• {saat} ({zamani}): {deger} mg/dL\n"
+            self.degerler_label.setText(degerler_text)
+        else:
+            self.kan_sekeri_label.setText("Günlük Kan Şekeri Ortalaması: -- mg/dL")
+            self.degerler_label.setText("Bugün için ölçüm bulunmamaktadır.")
+        
+        egzersizler = self.db.get_patient_exercises(self.hasta['id'])
+        bugun_egzersizler = [e for e in egzersizler if e[2] == bugun]
+        egzersiz_hedefi = 3 # güncellenebilir.
+        egzersiz_tamamlanan = sum(1 for e in bugun_egzersizler if e[4])
+        self.egzersiz_progress.setValue(int((egzersiz_tamamlanan / egzersiz_hedefi) * 100))
+        
+        diyetler = self.db.get_patient_diets(self.hasta['id'])
+        bugun_diyetler = [d for d in diyetler if d[2] == bugun]
+        diyet_hedefi = 3  # güncellenebilir.
+        diyet_tamamlanan = sum(1 for d in bugun_diyetler if d[4])
+        self.diyet_progress.setValue(int((diyet_tamamlanan / diyet_hedefi) * 100))
+        
+        self.insulin_filtrele()
+    
+    def insulin_filtrele(self):
+        baslangic = self.baslangic_tarihi.date().toPyDate()
+        bitis = self.bitis_tarihi.date().toPyDate()
+        
+        insulinler = self.db.get_patient_insulin(self.hasta['id'], baslangic, bitis)
+        
+        self.insulin_listesi.clear()
+        for insulin in insulinler:
+            tarih = insulin[2].strftime('%d.%m.%Y')
+            ortalama = insulin[3]
+            doz = insulin[4]
+            self.insulin_listesi.addItem(f"{tarih} - Ortalama: {ortalama:.1f} mg/dL, Doz: {doz} ml")
 
 class HastaPanel(QWidget):    
     def __init__(self, hasta, hasta_id, db):
@@ -292,17 +492,25 @@ class HastaPanel(QWidget):
         self.label.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
 
         button_layout = QHBoxLayout()
+        self.dashboardButton = QPushButton("Gösterge Paneli", self)
+        self.dashboardButton.setStyleSheet(Styles.get_button_style())
+
         self.bilgilerimButton = QPushButton("Bilgilerim", self)
         self.bilgilerimButton.setStyleSheet(Styles.get_button_style())
+
         self.olcumEkleButton = QPushButton("Yeni Ölçüm Ekle" , self)
         self.olcumEkleButton.setStyleSheet(Styles.get_button_style())
+
         self.egzersizButton = QPushButton("Egzersiz Takibi", self)
         self.egzersizButton.setStyleSheet(Styles.get_button_style())
+
         self.diyetButton = QPushButton("Diyet Takibi", self)
         self.diyetButton.setStyleSheet(Styles.get_button_style())
+        
         self.belirtiButton = QPushButton("Belirti Takibi", self)
         self.belirtiButton.setStyleSheet(Styles.get_button_style())
         
+        button_layout.addWidget(self.dashboardButton)
         button_layout.addWidget(self.bilgilerimButton)
         button_layout.addWidget(self.olcumEkleButton)
         button_layout.addWidget(self.egzersizButton)
@@ -314,12 +522,14 @@ class HastaPanel(QWidget):
         
         self.stacked_widget = QStackedWidget()
         
+        self.dashboard_widget = DashboardPenceresi(self.hasta, self.db)
         self.bilgilerim_widget = BilgilerimPenceresi(self.hasta, self.db)
-        self.olcum_widget = KanSekeriOlcumPenceresi(self.hasta, self.db)
-        self.egzersiz_widget = EgzersizTakipPenceresi(self.hasta, self.db)
-        self.diyet_widget = DiyetTakipPenceresi(self.hasta, self.db)
+        self.olcum_widget = KanSekeriOlcumPenceresi(self.hasta, self.db, self.dashboard_widget)
+        self.egzersiz_widget = EgzersizTakipPenceresi(self.hasta, self.db, self.dashboard_widget)
+        self.diyet_widget = DiyetTakipPenceresi(self.hasta, self.db, self.dashboard_widget)
         self.belirti_widget = BelirtiTakipPenceresi(self.hasta, self.db)
         
+        self.stacked_widget.addWidget(self.dashboard_widget)
         self.stacked_widget.addWidget(self.bilgilerim_widget)
         self.stacked_widget.addWidget(self.olcum_widget)
         self.stacked_widget.addWidget(self.egzersiz_widget)
@@ -328,11 +538,16 @@ class HastaPanel(QWidget):
         
         self.main_layout.addWidget(self.stacked_widget)
         
-        self.bilgilerimButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(0))
-        self.olcumEkleButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
-        self.egzersizButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
-        self.diyetButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
-        self.belirtiButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(4))
+        self.dashboardButton.clicked.connect(self.dashboard_goster)
+        self.bilgilerimButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
+        self.olcumEkleButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(2))
+        self.egzersizButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(3))
+        self.diyetButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(4))
+        self.belirtiButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(5))
         
         self.setLayout(self.main_layout)
+    
+    def dashboard_goster(self):
+        self.dashboard_widget.verileri_guncelle()
+        self.stacked_widget.setCurrentIndex(0)
 
