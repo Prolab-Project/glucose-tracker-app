@@ -107,4 +107,61 @@ class DatabaseManager:
             WHERE hasta_id = %s 
             ORDER BY tarih_saat DESC
         """, (hasta_id,))
+        return self.cursor.fetchall()
+    
+    def add_exercise(self, hasta_id, tarih, egzersiz_turu, egzersiz_durumu):
+        try:
+            self.cursor.execute("""
+                INSERT INTO egzersiz (hasta_id, tarih, egzersiz_turu, egzersiz_durumu)
+                VALUES (%s, %s, %s, %s)
+            """, (hasta_id, tarih, egzersiz_turu, egzersiz_durumu))
+            self.commit()
+        except Exception as e:
+            self.rollback()
+            raise e
+    
+    def add_diet(self, hasta_id, tarih, diyet_turu, diyet_uygulandi):
+        try:
+            self.cursor.execute("""
+                INSERT INTO diyet (hasta_id, tarih, diyet_turu, diyet_uygulandi)
+                VALUES (%s, %s, %s, %s)
+            """, (hasta_id, tarih, diyet_turu, diyet_uygulandi))
+            self.commit()
+        except Exception as e:
+            self.rollback()
+            raise e
+    
+    def add_symptom(self, hasta_id, tarih, belirti_turu):
+        try:
+            self.cursor.execute("""
+                INSERT INTO belirti (hasta_id, tarih, belirti_turu)
+                VALUES (%s, %s, %s)
+            """, (hasta_id, tarih, belirti_turu))
+            self.commit()
+        except Exception as e:
+            self.rollback()
+            raise e
+    
+    def get_patient_exercises(self, hasta_id):
+        self.cursor.execute("""
+            SELECT * FROM egzersiz 
+            WHERE hasta_id = %s 
+            ORDER BY tarih DESC
+        """, (hasta_id,))
+        return self.cursor.fetchall()
+    
+    def get_patient_diets(self, hasta_id):
+        self.cursor.execute("""
+            SELECT * FROM diyet 
+            WHERE hasta_id = %s 
+            ORDER BY tarih DESC
+        """, (hasta_id,))
+        return self.cursor.fetchall()
+    
+    def get_patient_symptoms(self, hasta_id):
+        self.cursor.execute("""
+            SELECT * FROM belirti 
+            WHERE hasta_id = %s 
+            ORDER BY tarih DESC
+        """, (hasta_id,))
         return self.cursor.fetchall() 
