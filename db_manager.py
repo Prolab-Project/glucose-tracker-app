@@ -90,6 +90,18 @@ class DatabaseManager:
             self.rollback()
             raise e
     
+    def update_user_password(self, user_id, yeni_sifre_hash):
+        try:
+            self.cursor.execute("""
+                UPDATE kullanici 
+                SET sifre_hash = %s
+                WHERE id = %s
+            """, (yeni_sifre_hash, user_id))
+            self.commit()
+        except Exception as e:
+            self.rollback()
+            raise e
+    
     def add_measurement(self, hasta_id, doktor_id, kan_seker_degeri, olcum_zamani):
         try:
             self.cursor.execute("""

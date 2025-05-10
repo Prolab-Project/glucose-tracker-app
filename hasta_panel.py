@@ -31,12 +31,56 @@ class BilgilerimPenceresi(QWidget):
         self.bilgi_label = QLabel()
         self.bilgi_label.setStyleSheet("color: black; font-size: 16px;")
         
-        self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
-        self.guncelle_btn.setStyleSheet(Styles.get_button_style())
+        self.resim_degistir_btn = QPushButton("Profil Resmi Değiştir")
+        self.resim_degistir_btn.setStyleSheet(Styles.get_button_style())
+        self.resim_degistir_btn.clicked.connect(self.profil_resmi_degistir)
+        
+        self.sifre_frame = QFrame()
+        self.sifre_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f8f9fa;
+                border-radius: 10px;
+                padding: 15px;
+                margin-top: 20px;
+            }
+        """)
+        sifre_layout = QVBoxLayout()
+        
+        sifre_baslik = QLabel("🔒 Şifre Değiştir")
+        sifre_baslik.setStyleSheet("font-size: 18px; font-weight: bold;")
+        
+        self.eski_sifre = QLineEdit()
+        self.eski_sifre.setPlaceholderText("Mevcut Şifre")
+        self.eski_sifre.setEchoMode(QLineEdit.Password)
+        self.eski_sifre.setStyleSheet(Styles.get_input_style())
+        
+        self.yeni_sifre = QLineEdit()
+        self.yeni_sifre.setPlaceholderText("Yeni Şifre")
+        self.yeni_sifre.setEchoMode(QLineEdit.Password)
+        self.yeni_sifre.setStyleSheet(Styles.get_input_style())
+        
+        self.yeni_sifre_tekrar = QLineEdit()
+        self.yeni_sifre_tekrar.setPlaceholderText("Yeni Şifre (Tekrar)")
+        self.yeni_sifre_tekrar.setEchoMode(QLineEdit.Password)
+        self.yeni_sifre_tekrar.setStyleSheet(Styles.get_input_style())
+        
+        self.sifre_degistir_btn = QPushButton("Şifreyi Değiştir")
+        self.sifre_degistir_btn.setStyleSheet(Styles.get_button_style())
+        self.sifre_degistir_btn.clicked.connect(self.sifre_degistir)
+        
+        sifre_layout.addWidget(sifre_baslik)
+        sifre_layout.addWidget(self.eski_sifre)
+        sifre_layout.addWidget(self.yeni_sifre)
+        sifre_layout.addWidget(self.yeni_sifre_tekrar)
+        sifre_layout.addWidget(self.sifre_degistir_btn)
+        
+        self.sifre_frame.setLayout(sifre_layout)
+
         
         self.layout.addWidget(self.profil_foto, alignment=Qt.AlignCenter)
+        self.layout.addWidget(self.resim_degistir_btn, alignment=Qt.AlignCenter)
         self.layout.addWidget(self.bilgi_label)
-        self.layout.addWidget(self.guncelle_btn)
+        self.layout.addWidget(self.sifre_frame)
         
         self.setLayout(self.layout)
         self.bilgileri_goster()
@@ -67,6 +111,68 @@ class BilgilerimPenceresi(QWidget):
             f"<b>Cinsiyet:</b> {self.hasta['cinsiyet']}<br>"
         )
         self.bilgi_label.setText(detay)
+    
+    def profil_resmi_degistir(self):
+        dosya_yolu, _ = QFileDialog.getOpenFileName(
+            self,
+            "Profil Resmi Seç",
+            "",
+            "Resim Dosyaları (*.png *.jpg *.jpeg)"
+        )
+        
+        if dosya_yolu:
+            try:
+                with open(dosya_yolu, 'rb') as f:
+                    resim_data = f.read()
+                
+                self.db.update_user(
+                    self.hasta['id'],
+                    self.hasta['ad'],
+                    self.hasta['soyad'],
+                    self.hasta['eposta'],
+                    self.hasta['cinsiyet'],
+                    resim_data
+                )
+                
+                self.hasta['profil_resmi'] = resim_data
+                self.bilgileri_goster()
+                QMessageBox.information(self, "Başarılı", "Profil resmi başarıyla güncellendi.")
+                
+            except Exception as e:
+                QMessageBox.warning(self, "Hata", f"Profil resmi güncellenirken bir hata oluştu: {str(e)}")
+    
+    def sifre_degistir(self):
+        eski_sifre = self.eski_sifre.text()
+        yeni_sifre = self.yeni_sifre.text()
+        yeni_sifre_tekrar = self.yeni_sifre_tekrar.text()
+        
+        if not eski_sifre or not yeni_sifre or not yeni_sifre_tekrar:
+            QMessageBox.warning(self, "Hata", "Lütfen tüm alanları doldurun.")
+            return
+        
+        if yeni_sifre != yeni_sifre_tekrar:
+            QMessageBox.warning(self, "Hata", "Yeni şifreler eşleşmiyor.")
+            return
+        
+        try:
+            eski_sifre_hash = hashlib.sha256(eski_sifre.encode()).hexdigest()
+            yeni_sifre_hash = hashlib.sha256(yeni_sifre.encode()).hexdigest()
+            
+            if eski_sifre_hash != self.hasta['sifre_hash']:
+                QMessageBox.warning(self, "Hata", "Mevcut şifre yanlış.")
+                return
+            
+            self.db.update_user_password(self.hasta['id'], yeni_sifre_hash)
+            self.hasta['sifre_hash'] = yeni_sifre_hash
+            
+            self.eski_sifre.clear()
+            self.yeni_sifre.clear()
+            self.yeni_sifre_tekrar.clear()
+            
+            QMessageBox.information(self, "Başarılı", "Şifreniz başarıyla güncellendi.")
+            
+        except Exception as e:
+            QMessageBox.warning(self, "Hata", f"Şifre güncellenirken bir hata oluştu: {str(e)}")
 
 class EgzersizTakipPenceresi(QWidget):
     def __init__(self, hasta, db, dashboard=None):
