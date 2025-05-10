@@ -24,11 +24,17 @@ class DatabaseManager:
     def rollback(self):
         self.conn.rollback()
         
-    def get_user_by_tc(self, tc_no, sifre_hash):
-        self.cursor.execute("""
-            SELECT * FROM kullanici 
-            WHERE tc_kimlik_no = %s AND sifre_hash = %s
-        """, (tc_no, sifre_hash))
+    def get_user_by_tc(self, tc_no, sifre_hash=None):
+        if sifre_hash is None:
+            self.cursor.execute("""
+                SELECT * FROM kullanici 
+                WHERE tc_kimlik_no = %s
+            """, (tc_no,))
+        else:
+            self.cursor.execute("""
+                SELECT * FROM kullanici 
+                WHERE tc_kimlik_no = %s AND sifre_hash = %s
+            """, (tc_no, sifre_hash))
         return self.cursor.fetchone()
     
     def get_user_by_id(self, user_id):

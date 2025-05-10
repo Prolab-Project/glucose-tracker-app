@@ -40,11 +40,17 @@ class HastaListePenceresi(QWidget):
         
         self.olcum_ekle_btn = QPushButton("➕ Ölçüm Ekle")
         self.olcum_ekle_btn.setStyleSheet(Styles.get_button_style())
+        
         self.goruntule_btn = QPushButton("📊 Ölçümleri Görüntüle")
         self.goruntule_btn.setStyleSheet(Styles.get_button_style())
+        
         self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
         self.guncelle_btn.setStyleSheet(Styles.get_button_style())
-
+        
+        self.olcum_ekle_btn.setEnabled(False)
+        self.goruntule_btn.setEnabled(False)
+        self.guncelle_btn.setEnabled(False)
+        
         self.detay_layout.addWidget(self.olcum_ekle_btn)
         self.detay_layout.addWidget(self.goruntule_btn)
         self.detay_layout.addWidget(self.guncelle_btn)
@@ -61,13 +67,16 @@ class HastaListePenceresi(QWidget):
         self.setLayout(self.layout)
         self.hastalari_getir()
 
-        self.hasta_listesi.itemDoubleClicked.connect(self.hasta_detaylarini_goster)
+        self.hasta_listesi.itemClicked.connect(self.hasta_detaylarini_goster)
+        
+        self.secili_hasta_id = None
     
     def hasta_detaylarini_goster(self, item):
         tc = item.text().split("TC: ")[-1]
         hasta = self.db.get_user_by_tc(tc, None)  
 
         if hasta:
+            self.secili_hasta_id = hasta[0]
             hasta_dict = {
                 'id': hasta[0],
                 'tc_kimlik_no': hasta[1],
@@ -107,6 +116,11 @@ class HastaListePenceresi(QWidget):
                 f"<b>Doğum Tarihi:</b> {hasta_dict['dogum_tarihi'].strftime('%d.%m.%Y')}<br>"
             )
             self.detay_label.setText(detay)
+            
+            self.olcum_ekle_btn.setEnabled(True)
+            self.goruntule_btn.setEnabled(True)
+            self.guncelle_btn.setEnabled(True)
+            
 
     def hastalari_getir(self):
         self.hasta_listesi.clear()  
