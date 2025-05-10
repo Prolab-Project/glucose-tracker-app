@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget,QDialog
 from PyQt5.QtGui import QRegularExpressionValidator, QPixmap
 from PyQt5.QtCore import QRegularExpression, Qt
 from datetime import datetime
@@ -43,6 +43,7 @@ class HastaListePenceresi(QWidget):
         
         self.goruntule_btn = QPushButton("📊 Ölçümleri Görüntüle")
         self.goruntule_btn.setStyleSheet(Styles.get_button_style())
+        self.goruntule_btn.clicked.connect(self.olcumleri_goruntule)
         
         self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
         self.guncelle_btn.setStyleSheet(Styles.get_button_style())
@@ -70,7 +71,73 @@ class HastaListePenceresi(QWidget):
         self.hasta_listesi.itemClicked.connect(self.hasta_detaylarini_goster)
         
         self.secili_hasta_id = None
-    
+        
+    def olcumleri_goruntule(self):
+        if not self.secili_hasta_id:
+            QMessageBox.warning(self, "Uyarı", "Lütfen önce bir hasta seçin.")
+            return
+        
+        olcumler = self.db.get_patient_measurements(self.secili_hasta_id)
+        
+        if not olcumler:
+            QMessageBox.information(self, "Bilgi", "Bu hasta için kaydedilmiş ölçüm bulunmamaktadır.")
+            return
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Hasta Ölçümleri")
+        dialog.setMinimumSize(600, 400)
+        
+        layout = QVBoxLayout()
+        
+        hasta = self.db.get_user_by_id(self.secili_hasta_id)
+        if hasta:
+            baslik = QLabel(f"{hasta[2]} {hasta[3]} - Kan Şekeri Ölçümleri")
+        else:
+            baslik = QLabel("Kan Şekeri Ölçümleri")
+        baslik.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(baslik)
+        
+        liste = QListWidget()
+        liste.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                font-size: 14px;
+                padding: 5px;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+        """)
+        
+        for olcum in olcumler:
+            tarih_saat = olcum[3].strftime("%d.%m.%Y %H:%M")
+            deger = olcum[4]
+            zaman = olcum[5] if olcum[5] else "Belirtilmemiş"
+            
+            item_text = f"{tarih_saat} - {deger} mg/dL ({zaman})"
+            liste.addItem(item_text)
+        
+        layout.addWidget(liste)
+        
+        if olcumler:
+            toplam_deger = sum(o[4] for o in olcumler)
+            ortalama = toplam_deger / len(olcumler)
+            
+            ortalama_label = QLabel(f"Ortalama Kan Şekeri: {ortalama:.1f} mg/dL (Toplam {len(olcumler)} ölçüm)")
+            ortalama_label.setStyleSheet("font-size: 16px; margin-top: 10px;")
+            layout.addWidget(ortalama_label)
+        
+        kapat_btn = QPushButton("Kapat")
+        kapat_btn.setStyleSheet(Styles.get_button_style())
+        kapat_btn.clicked.connect(dialog.close)
+        
+        layout.addWidget(kapat_btn, alignment=Qt.AlignCenter)
+        
+        dialog.setLayout(layout)
+        dialog.exec_()
+
     def hasta_detaylarini_goster(self, item):
         tc = item.text().split("TC: ")[-1]
         hasta = self.db.get_user_by_tc(tc, None)  
