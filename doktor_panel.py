@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget,QDialog
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget, QDialog, QFrame, QSpinBox, QDateEdit, QTimeEdit
 from PyQt5.QtGui import QRegularExpressionValidator, QPixmap
-from PyQt5.QtCore import QRegularExpression, Qt
+from PyQt5.QtCore import QRegularExpression, Qt, QDate, QTime
 from datetime import datetime
 import hashlib
 from styles import Styles
@@ -40,6 +40,7 @@ class HastaListePenceresi(QWidget):
         
         self.olcum_ekle_btn = QPushButton("➕ Ölçüm Ekle")
         self.olcum_ekle_btn.setStyleSheet(Styles.get_button_style())
+        self.olcum_ekle_btn.clicked.connect(self.olcum_ekle)
         
         self.goruntule_btn = QPushButton("📊 Ölçümleri Görüntüle")
         self.goruntule_btn.setStyleSheet(Styles.get_button_style())
@@ -71,6 +72,196 @@ class HastaListePenceresi(QWidget):
         self.hasta_listesi.itemClicked.connect(self.hasta_detaylarini_goster)
         
         self.secili_hasta_id = None
+        self.secili_hasta = None
+    
+    def olcum_ekle(self):
+        if not self.secili_hasta_id or not self.secili_hasta:
+            QMessageBox.warning(self, "Uyarı", "Lütfen önce bir hasta seçin.")
+            return
+            
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{self.secili_hasta['ad']} {self.secili_hasta['soyad']} - Kan Şekeri Ölçümü Ekle")
+        dialog.setMinimumSize(400, 500) 
+        
+        main_layout = QVBoxLayout(dialog)
+        main_layout.setContentsMargins(10, 10, 10, 10)  # Kenar boşluklarını azalt
+        main_layout.setSpacing(10)
+        
+        # Ana kart frame
+        main_card = QFrame()
+        main_card.setStyleSheet(Styles.get_modern_card_style())
+        card_layout = QVBoxLayout(main_card)
+        card_layout.setContentsMargins(15, 15, 15, 15)  
+        card_layout.setSpacing(10) 
+        
+        baslik = QLabel("🩸 Kan Şekeri Ölçümü")
+        baslik.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        
+        hasta_bilgisi = QLabel(f"Hasta: {self.secili_hasta['ad']} {self.secili_hasta['soyad']}")
+        hasta_bilgisi.setStyleSheet("font-size: 14px; color: #3498db;")
+        card_layout.addWidget(hasta_bilgisi, alignment=Qt.AlignCenter)
+        
+        deger_frame = QFrame()
+        deger_frame.setStyleSheet(Styles.get_inner_card_style())
+        deger_layout = QVBoxLayout(deger_frame)
+        deger_layout.setContentsMargins(10, 10, 10, 10)  # Kenar boşluklarını azalt
+        deger_layout.setSpacing(5)  # Azalt
+        
+        deger_baslik = QLabel("📊 Ölçüm Değeri")
+        deger_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #2c3e50;")
+        deger_layout.addWidget(deger_baslik)
+        
+        kan_sekeri = QSpinBox()
+        kan_sekeri.setRange(30, 500)
+        kan_sekeri.setValue(120)
+        kan_sekeri.setStyleSheet("""
+            QSpinBox {
+                border: 1px solid #3498db;
+                border-radius: 5px;
+                padding: 5px;
+                background-color: white;
+                font-size: 14px;
+                min-height: 25px;
+            }
+        """)
+        deger_layout.addWidget(kan_sekeri)
+        
+        zaman_frame = QFrame()
+        zaman_frame.setStyleSheet(Styles.get_inner_card_style())
+        zaman_layout = QVBoxLayout(zaman_frame)
+        zaman_layout.setContentsMargins(10, 10, 10, 10)  
+        zaman_layout.setSpacing(5)  
+        zaman_baslik = QLabel("⏰ Ölçüm Zamanı")
+        zaman_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #2c3e50;")
+        zaman_layout.addWidget(zaman_baslik)
+        
+        ogun_layout = QHBoxLayout()
+        ogun_label = QLabel("Öğün:")
+        ogun_label.setStyleSheet("font-size: 12px;")
+        olcum_zamani = QComboBox()
+        olcum_zamani.addItems(["Sabah", "Öğle", "Akşam", "Gece"])
+        olcum_zamani.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #3498db;
+                border-radius: 5px;
+                padding: 3px;
+                background-color: white;
+                font-size: 12px;
+                min-height: 25px;
+            }
+        """)
+        
+        ogun_layout.addWidget(ogun_label)
+        ogun_layout.addWidget(olcum_zamani)
+        zaman_layout.addLayout(ogun_layout)
+        
+        tarih_saat_layout = QHBoxLayout()
+        
+        tarih_layout = QVBoxLayout()
+        tarih_label = QLabel("Tarih:")
+        tarih_label.setStyleSheet("font-size: 12px;")
+        tarih = QDateEdit()
+        tarih.setDate(QDate.currentDate())
+        tarih.setCalendarPopup(True)
+        tarih.setStyleSheet("""
+            QDateEdit {
+                border: 1px solid #3498db;
+                border-radius: 5px;
+                padding: 3px;
+                background-color: white;
+                font-size: 12px;
+                min-height: 25px;
+            }
+        """)
+        tarih_layout.addWidget(tarih_label)
+        tarih_layout.addWidget(tarih)
+        
+        saat_layout = QVBoxLayout()
+        saat_label = QLabel("Saat:")
+        saat_label.setStyleSheet("font-size: 12px;")
+        saat = QTimeEdit()
+        saat.setTime(QTime.currentTime())
+        saat.setStyleSheet("""
+            QTimeEdit {
+                border: 1px solid #3498db;
+                border-radius: 5px;
+                padding: 3px;
+                background-color: white;
+                font-size: 12px;
+                min-height: 25px;
+            }
+        """)
+        saat_layout.addWidget(saat_label)
+        saat_layout.addWidget(saat)
+        
+        tarih_saat_layout.addLayout(tarih_layout)
+        tarih_saat_layout.addLayout(saat_layout)
+        zaman_layout.addLayout(tarih_saat_layout)
+        
+        buton_layout = QHBoxLayout()  
+        
+        kaydet_btn = QPushButton("Kaydet")
+        kaydet_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 13px;
+            }
+        """)
+        
+        # Kaydetme işlemini lambda fonksiyon olarak tanımlayalım
+        kaydet_btn.clicked.connect(lambda: self.olcum_kaydet_dialog(
+            dialog, 
+            self.secili_hasta_id, 
+            kan_sekeri.value(),
+            olcum_zamani.currentText(),
+            tarih.date().toPyDate(),
+            saat.time().toPyTime()
+        ))
+        
+        iptal_btn = QPushButton("İptal")
+        iptal_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 13px;
+            }
+        """)
+        iptal_btn.clicked.connect(dialog.reject)
+        
+        buton_layout.addWidget(kaydet_btn)
+        buton_layout.addWidget(iptal_btn)
+        
+        card_layout.addWidget(deger_frame)
+        card_layout.addWidget(zaman_frame)
+        card_layout.addLayout(buton_layout)  
+        
+        main_layout.addWidget(main_card)
+        
+        dialog.exec_()
+    
+    def olcum_kaydet_dialog(self, dialog, hasta_id, kan_sekeri_degeri, olcum_zamani, tarih, saat):
+        try:
+            from datetime import datetime
+            tarih_saat = datetime.combine(tarih, saat)
+            
+            self.db.add_measurement(
+                hasta_id,
+                self.doktor['id'],  # doktor_id burada doktor olarak ekleniyor
+                kan_sekeri_degeri,
+                olcum_zamani
+            )
+            QMessageBox.information(self, "Başarılı", "Kan şekeri ölçümü kaydedildi.")
+            dialog.accept()
+        except Exception as e:
+            QMessageBox.warning(self, "Hata", f"Ölçüm kaydedilirken bir hata oluştu: {str(e)}")
         
     def olcumleri_goruntule(self):
         if not self.secili_hasta_id:
@@ -144,7 +335,7 @@ class HastaListePenceresi(QWidget):
 
         if hasta:
             self.secili_hasta_id = hasta[0]
-            hasta_dict = {
+            self.secili_hasta = {
                 'id': hasta[0],
                 'tc_kimlik_no': hasta[1],
                 'ad': hasta[2],
@@ -157,9 +348,9 @@ class HastaListePenceresi(QWidget):
                 'profil_resmi': hasta[9]
             }
             
-            if hasta_dict['profil_resmi']:
+            if self.secili_hasta['profil_resmi']:
                 pixmap = QPixmap()
-                pixmap.loadFromData(hasta_dict['profil_resmi'])
+                pixmap.loadFromData(self.secili_hasta['profil_resmi'])
                 rounded_pixmap = QPixmap(pixmap.size())
                 rounded_pixmap.fill(Qt.transparent)
                 self.profil_foto.setPixmap(pixmap)
@@ -176,11 +367,11 @@ class HastaListePenceresi(QWidget):
                 """)
 
             detay = (
-                f"<b>Ad:</b> {hasta_dict['ad']}<br>"
-                f"<b>Soyad:</b> {hasta_dict['soyad']}<br>"
-                f"<b>TC:</b> {hasta_dict['tc_kimlik_no']}<br>"
-                f"<b>Email:</b> {hasta_dict['eposta']}<br>"
-                f"<b>Doğum Tarihi:</b> {hasta_dict['dogum_tarihi'].strftime('%d.%m.%Y')}<br>"
+                f"<b>Ad:</b> {self.secili_hasta['ad']}<br>"
+                f"<b>Soyad:</b> {self.secili_hasta['soyad']}<br>"
+                f"<b>TC:</b> {self.secili_hasta['tc_kimlik_no']}<br>"
+                f"<b>Email:</b> {self.secili_hasta['eposta']}<br>"
+                f"<b>Doğum Tarihi:</b> {self.secili_hasta['dogum_tarihi'].strftime('%d.%m.%Y')}<br>"
             )
             self.detay_label.setText(detay)
             
