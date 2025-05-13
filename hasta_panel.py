@@ -16,56 +16,77 @@ class BilgilerimPenceresi(QWidget):
         self.db = db
         
         self.layout = QVBoxLayout()
+        self.layout.setContentsMargins(20, 20, 20, 20)
+        self.layout.setSpacing(15)
+        
+        # Ana kart frame
+        self.main_frame = QFrame()
+        self.main_frame.setStyleSheet(Styles.get_modern_card_style())
+        main_layout = QVBoxLayout(self.main_frame)
+        main_layout.setContentsMargins(25, 25, 25, 25)
+        main_layout.setSpacing(15)
+        
+        # Başlık
+        baslik = QLabel("👤 Kişisel Bilgilerim")
+        baslik.setStyleSheet(Styles.get_title_style())
+        main_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        
+        # Profil bölümü
+        profil_frame = QFrame()
+        profil_frame.setStyleSheet(Styles.get_inner_card_style())
+        profil_layout = QVBoxLayout(profil_frame)
         
         self.profil_foto = QLabel()
         self.profil_foto.setFixedSize(150, 150)
-        self.profil_foto.setStyleSheet("""
-            QLabel {
-                border: 2px solid #ccc;
-                border-radius: 75px;
-                background-color: #f0f0f0;
-            }
-        """)
+        self.profil_foto.setStyleSheet(Styles.get_modern_profile_image_style())
         self.profil_foto.setScaledContents(True)
         
-        self.bilgi_label = QLabel()
-        self.bilgi_label.setStyleSheet("color: black; font-size: 16px;")
-        
-        self.resim_degistir_btn = QPushButton("Profil Resmi Değiştir")
-        self.resim_degistir_btn.setStyleSheet(Styles.get_button_style())
+        self.resim_degistir_btn = QPushButton("🖼️ Profil Resmi Değiştir")
+        self.resim_degistir_btn.setStyleSheet(Styles.get_modern_button_style())
         self.resim_degistir_btn.clicked.connect(self.profil_resmi_degistir)
         
+        profil_layout.addWidget(self.profil_foto, alignment=Qt.AlignCenter)
+        profil_layout.addWidget(self.resim_degistir_btn, alignment=Qt.AlignCenter)
+        
+        # Bilgi kartı
+        bilgi_frame = QFrame()
+        bilgi_frame.setStyleSheet(Styles.get_inner_card_style())
+        bilgi_layout = QVBoxLayout(bilgi_frame)
+        
+        bilgi_baslik = QLabel("Kişisel Bilgiler")
+        bilgi_baslik.setStyleSheet(Styles.get_subtitle_style())
+        
+        self.bilgi_label = QLabel()
+        self.bilgi_label.setStyleSheet(Styles.get_label_style("#34495e", 16))
+        
+        bilgi_layout.addWidget(bilgi_baslik)
+        bilgi_layout.addWidget(self.bilgi_label)
+        
+        # Şifre değiştirme kartı
         self.sifre_frame = QFrame()
-        self.sifre_frame.setStyleSheet("""
-            QFrame {
-                background-color: #f8f9fa;
-                border-radius: 10px;
-                padding: 15px;
-                margin-top: 20px;
-            }
-        """)
-        sifre_layout = QVBoxLayout()
+        self.sifre_frame.setStyleSheet(Styles.get_inner_card_style())
+        sifre_layout = QVBoxLayout(self.sifre_frame)
         
         sifre_baslik = QLabel("🔒 Şifre Değiştir")
-        sifre_baslik.setStyleSheet("font-size: 18px; font-weight: bold;")
+        sifre_baslik.setStyleSheet(Styles.get_subtitle_style())
         
         self.eski_sifre = QLineEdit()
         self.eski_sifre.setPlaceholderText("Mevcut Şifre")
         self.eski_sifre.setEchoMode(QLineEdit.Password)
-        self.eski_sifre.setStyleSheet(Styles.get_input_style())
+        self.eski_sifre.setStyleSheet(Styles.get_modern_input_style())
         
         self.yeni_sifre = QLineEdit()
         self.yeni_sifre.setPlaceholderText("Yeni Şifre")
         self.yeni_sifre.setEchoMode(QLineEdit.Password)
-        self.yeni_sifre.setStyleSheet(Styles.get_input_style())
+        self.yeni_sifre.setStyleSheet(Styles.get_modern_input_style())
         
         self.yeni_sifre_tekrar = QLineEdit()
         self.yeni_sifre_tekrar.setPlaceholderText("Yeni Şifre (Tekrar)")
         self.yeni_sifre_tekrar.setEchoMode(QLineEdit.Password)
-        self.yeni_sifre_tekrar.setStyleSheet(Styles.get_input_style())
+        self.yeni_sifre_tekrar.setStyleSheet(Styles.get_modern_input_style())
         
         self.sifre_degistir_btn = QPushButton("Şifreyi Değiştir")
-        self.sifre_degistir_btn.setStyleSheet(Styles.get_button_style())
+        self.sifre_degistir_btn.setStyleSheet(Styles.get_modern_button_style())
         self.sifre_degistir_btn.clicked.connect(self.sifre_degistir)
         
         sifre_layout.addWidget(sifre_baslik)
@@ -74,14 +95,12 @@ class BilgilerimPenceresi(QWidget):
         sifre_layout.addWidget(self.yeni_sifre_tekrar)
         sifre_layout.addWidget(self.sifre_degistir_btn)
         
-        self.sifre_frame.setLayout(sifre_layout)
-
+        # Ana düzene ekle
+        main_layout.addWidget(profil_frame)
+        main_layout.addWidget(bilgi_frame)
+        main_layout.addWidget(self.sifre_frame)
         
-        self.layout.addWidget(self.profil_foto, alignment=Qt.AlignCenter)
-        self.layout.addWidget(self.resim_degistir_btn, alignment=Qt.AlignCenter)
-        self.layout.addWidget(self.bilgi_label)
-        self.layout.addWidget(self.sifre_frame)
-        
+        self.layout.addWidget(self.main_frame)
         self.setLayout(self.layout)
         self.bilgileri_goster()
         
@@ -94,7 +113,7 @@ class BilgilerimPenceresi(QWidget):
             self.profil_foto.setText("👤")
             self.profil_foto.setStyleSheet("""
                 QLabel {
-                    border: 2px solid #ccc;
+                    border: 3px solid #3498db;
                     border-radius: 75px;
                     background-color: #f0f0f0;
                     font-size: 72px;
@@ -103,12 +122,14 @@ class BilgilerimPenceresi(QWidget):
             """)
             
         detay = (
-            f"<b>Ad:</b> {self.hasta['ad']}<br>"
-            f"<b>Soyad:</b> {self.hasta['soyad']}<br>"
-            f"<b>TC:</b> {self.hasta['tc_kimlik_no']}<br>"
-            f"<b>Email:</b> {self.hasta['eposta']}<br>"
-            f"<b>Doğum Tarihi:</b> {self.hasta['dogum_tarihi'].strftime('%d.%m.%Y')}<br>"
-            f"<b>Cinsiyet:</b> {self.hasta['cinsiyet']}<br>"
+            f"<table style='width: 100%; border-spacing: 10px;'>"
+            f"<tr><td style='font-weight: bold; color: #3498db;'>Ad:</td><td>{self.hasta['ad']}</td></tr>"
+            f"<tr><td style='font-weight: bold; color: #3498db;'>Soyad:</td><td>{self.hasta['soyad']}</td></tr>"
+            f"<tr><td style='font-weight: bold; color: #3498db;'>TC:</td><td>{self.hasta['tc_kimlik_no']}</td></tr>"
+            f"<tr><td style='font-weight: bold; color: #3498db;'>Email:</td><td>{self.hasta['eposta']}</td></tr>"
+            f"<tr><td style='font-weight: bold; color: #3498db;'>Doğum Tarihi:</td><td>{self.hasta['dogum_tarihi'].strftime('%d.%m.%Y')}</td></tr>"
+            f"<tr><td style='font-weight: bold; color: #3498db;'>Cinsiyet:</td><td>{self.hasta['cinsiyet']}</td></tr>"
+            f"</table>"
         )
         self.bilgi_label.setText(detay)
     
@@ -339,44 +360,111 @@ class KanSekeriOlcumPenceresi(QWidget):
         self.db = db
         self.dashboard = dashboard
         
-
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(15)
         
+        # Ana kart frame
+        self.main_card = QFrame()
+        self.main_card.setStyleSheet(Styles.get_modern_card_style())
+        card_layout = QVBoxLayout(self.main_card)
+        card_layout.setContentsMargins(25, 25, 25, 25)
+        card_layout.setSpacing(20)
+        
+        # Başlık
         baslik = QLabel("🩸 Kan Şekeri Ölçümü")
-        baslik.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        baslik.setStyleSheet(Styles.get_title_style())
+        card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        
+        # Değer girişi bölümü
+        deger_frame = QFrame()
+        deger_frame.setStyleSheet(Styles.get_inner_card_style())
+        deger_layout = QVBoxLayout(deger_frame)
+        
+        # Değer başlık ve giriş
+        deger_baslik = QLabel("📊 Ölçüm Değeri")
+        deger_baslik.setStyleSheet(Styles.get_subtitle_style())
+        deger_layout.addWidget(deger_baslik)
+        
+        deger_alt_baslik = QLabel("Kan şekeri değerinizi mg/dL cinsinden giriniz")
+        deger_alt_baslik.setStyleSheet(Styles.get_label_style("#7f8c8d", 13))
+        deger_layout.addWidget(deger_alt_baslik)
         
         self.kan_sekeri = QSpinBox()
-        self.kan_sekeri.setRange(0, 1000)
-        self.kan_sekeri.setStyleSheet(Styles.get_input_style())
+        self.kan_sekeri.setRange(30, 500)
+        self.kan_sekeri.setValue(120)
+        self.kan_sekeri.setStyleSheet(Styles.get_modern_spinbox_style())
+        deger_layout.addWidget(self.kan_sekeri)
+        
+        # Zaman bilgileri bölümü
+        zaman_frame = QFrame()
+        zaman_frame.setStyleSheet(Styles.get_inner_card_style())
+        zaman_layout = QVBoxLayout(zaman_frame)
+        
+        zaman_baslik = QLabel("⏰ Ölçüm Zamanı")
+        zaman_baslik.setStyleSheet(Styles.get_subtitle_style())
+        zaman_layout.addWidget(zaman_baslik)
+        
+        # Öğün zamanı
+        ogun_label = QLabel("Öğün durumu:")
+        ogun_label.setStyleSheet(Styles.get_label_style())
         
         self.olcum_zamani = QComboBox()
         self.olcum_zamani.addItems(["Sabah", "Öğle", "Akşam", "Gece"])
-        self.olcum_zamani.setStyleSheet(Styles.get_input_style())
+        self.olcum_zamani.setStyleSheet(Styles.get_modern_combobox_style())
         
+        ogun_layout = QHBoxLayout()
+        ogun_layout.addWidget(ogun_label)
+        ogun_layout.addWidget(self.olcum_zamani)
+        zaman_layout.addLayout(ogun_layout)
+        
+        # Tarih ve saat
+        tarih_saat_layout = QHBoxLayout()
+        
+        tarih_layout = QVBoxLayout()
+        tarih_label = QLabel("Tarih:")
+        tarih_label.setStyleSheet(Styles.get_label_style())
         self.tarih = QDateEdit()
         self.tarih.setDate(QDate.currentDate())
-        self.tarih.setStyleSheet(Styles.get_input_style())
+        self.tarih.setCalendarPopup(True)
+        self.tarih.setStyleSheet(Styles.get_modern_dateedit_style())
+        tarih_layout.addWidget(tarih_label)
+        tarih_layout.addWidget(self.tarih)
         
+        saat_layout = QVBoxLayout()
+        saat_label = QLabel("Saat:")
+        saat_label.setStyleSheet(Styles.get_label_style())
         self.saat = QTimeEdit()
         self.saat.setTime(QTime.currentTime())
-        self.saat.setStyleSheet(Styles.get_input_style())
+        self.saat.setStyleSheet(Styles.get_modern_timeedit_style())
+        saat_layout.addWidget(saat_label)
+        saat_layout.addWidget(self.saat)
         
-        self.kaydet_btn = QPushButton("Ölçümü Kaydet")
-        self.kaydet_btn.setStyleSheet(Styles.get_button_style())
+        tarih_saat_layout.addLayout(tarih_layout)
+        tarih_saat_layout.addLayout(saat_layout)
+        zaman_layout.addLayout(tarih_saat_layout)
+        
+        # Kaydet buton bölümü
+        buton_frame = QFrame()
+        buton_frame.setStyleSheet(Styles.get_inner_card_style())
+        buton_layout = QVBoxLayout(buton_frame)
+        
+        bilgi_label = QLabel("Ölçüm değerlerini kaydederek sağlık takibinizi yapabilirsiniz.")
+        bilgi_label.setStyleSheet("font-size: 13px; color: #7f8c8d; font-style: italic; margin-bottom: 10px;")
+        buton_layout.addWidget(bilgi_label)
+        
+        self.kaydet_btn = QPushButton("💾 Ölçümü Kaydet")
+        self.kaydet_btn.setStyleSheet(Styles.get_success_button_style())
         self.kaydet_btn.clicked.connect(self.olcum_kaydet)
+        buton_layout.addWidget(self.kaydet_btn)
         
-        layout.addWidget(baslik)
-        layout.addWidget(QLabel("Kan Şekeri Değeri (mg/dL):"))
-        layout.addWidget(self.kan_sekeri)
-        layout.addWidget(QLabel("Ölçüm Zamanı:"))
-        layout.addWidget(self.olcum_zamani)
-        layout.addWidget(QLabel("Tarih:"))
-        layout.addWidget(self.tarih)
-        layout.addWidget(QLabel("Saat:"))
-        layout.addWidget(self.saat)
-        layout.addWidget(self.kaydet_btn)
+        # Ana düzene ekleme
+        card_layout.addWidget(deger_frame)
+        card_layout.addWidget(zaman_frame)
+        card_layout.addWidget(buton_frame)
         
-        self.setLayout(layout)
+        main_layout.addWidget(self.main_card)
+        self.setLayout(main_layout)
     
     def olcum_kaydet(self):
         try:
