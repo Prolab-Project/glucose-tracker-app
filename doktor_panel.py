@@ -140,7 +140,13 @@ class HastaListePenceresi(QWidget):
         ogun_label = QLabel("Öğün:")
         ogun_label.setStyleSheet("font-size: 12px;")
         olcum_zamani = QComboBox()
-        olcum_zamani.addItems(["Sabah", "Öğle", "Akşam", "Gece"])
+        olcum_zamani.addItems([
+            "Sabah (07:00-08:00)", 
+            "Öğle (12:00-13:00)", 
+            "İkindi (15:00-16:00)", 
+            "Akşam (18:00-19:00)", 
+            "Gece (22:00-23:00)"
+        ])
         olcum_zamani.setStyleSheet("""
             QComboBox {
                 border: 1px solid #3498db;

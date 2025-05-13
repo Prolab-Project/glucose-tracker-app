@@ -410,7 +410,13 @@ class KanSekeriOlcumPenceresi(QWidget):
         ogun_label.setStyleSheet(Styles.get_label_style())
         
         self.olcum_zamani = QComboBox()
-        self.olcum_zamani.addItems(["Sabah", "Öğle", "Akşam", "Gece"])
+        self.olcum_zamani.addItems([
+            "Sabah (07:00-08:00)", 
+            "Öğle (12:00-13:00)", 
+            "İkindi (15:00-16:00)", 
+            "Akşam (18:00-19:00)", 
+            "Gece (22:00-23:00)"
+        ])
         self.olcum_zamani.setStyleSheet(Styles.get_modern_combobox_style())
         
         ogun_layout = QHBoxLayout()
