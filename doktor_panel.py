@@ -53,6 +53,10 @@ class HastaListePenceresi(QWidget):
         self.goruntule_btn = QPushButton("📊 Ölçümleri Görüntüle")
         self.goruntule_btn.setStyleSheet(Styles.get_button_style())
         self.goruntule_btn.clicked.connect(self.olcumleri_goruntule)
+
+        self.diyet_goruntule_btn = QPushButton("Diyet Görüntüle ")
+        self.diyet_goruntule_btn.setStyleSheet(Styles.get_button_style())
+        self.diyet_goruntule_btn.clicked.connect(self.diyet_goruntule)
         
         self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
         self.guncelle_btn.setStyleSheet(Styles.get_button_style())
@@ -60,9 +64,11 @@ class HastaListePenceresi(QWidget):
         self.olcum_ekle_btn.setEnabled(False)
         self.goruntule_btn.setEnabled(False)
         self.guncelle_btn.setEnabled(False)
+        self.diyet_goruntule_btn.setEnabled(False)
         
         self.detay_layout.addWidget(self.olcum_ekle_btn)
         self.detay_layout.addWidget(self.goruntule_btn)
+        self.detay_layout.addWidget(self.diyet_goruntule_btn)
         self.detay_layout.addWidget(self.guncelle_btn)
 
         baslik_label = QLabel("🩺 Hastalarım")
@@ -343,6 +349,58 @@ class HastaListePenceresi(QWidget):
         dialog.setLayout(layout)
         dialog.exec_()
 
+    def diyet_goruntule(self): 
+        if not self.secili_hasta_id : 
+            QMessageBox.warning(self, "Uyarı", "Lutfen bir hasta seçiniz.")
+            return
+        diyetler = self.db.get_patient_diets(self.secili_hasta_id)
+        if not diyetler : 
+            QMessageBox.information(self, "Bilgi", "Bu hasta için diyet bilgisi bulunamamıştır")
+            return
+        dialog = QDialog(self) 
+        dialog.setWindowTitle("Hasta diyet bilgileri")
+        dialog.setMinimumSize(600,400)
+
+        layout = QVBoxLayout() 
+
+        hasta = self.db.get_user_by_id(self.secili_hasta_id)
+        if hasta:
+            baslik = QLabel(f"{hasta[2]} {hasta[3]} - Diyet Bilgileri")
+        else : 
+            baslik= QLabel("Diyet bilgileri")        
+        baslik.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(baslik)
+        
+        liste = QListWidget()
+        liste.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                font-size: 14px;
+                padding: 5px;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+        """)        
+        for diyet in diyetler :
+            tarih = diyet[2].strftime("%d.%m.%Y")
+            diyet_turu = diyet[3]
+            diyet_uygulandi = diyet[4] 
+            
+            item_text= f"{tarih} - Diyet Türü{diyet_turu} Diyet Uygulandı Mı ? {diyet_uygulandi}"
+            liste.addItem(item_text)
+        
+        kapat_btn = QPushButton("Kapat")
+        kapat_btn.setStyleSheet(Styles.get_button_style())
+        kapat_btn.clicked.connect(dialog.close)
+        
+        layout.addWidget(kapat_btn, alignment=Qt.AlignCenter)
+        
+        dialog.setLayout(layout)
+        dialog.exec_()
+
     def hasta_detaylarini_goster(self, item):
         tc = item.text().split("TC: ")[-1]
         hasta = self.db.get_user_by_tc(tc, None)  
@@ -392,6 +450,7 @@ class HastaListePenceresi(QWidget):
             self.olcum_ekle_btn.setEnabled(True)
             self.goruntule_btn.setEnabled(True)
             self.guncelle_btn.setEnabled(True)
+            self.diyet_goruntule_btn.setEnabled(True)
             
 
     def hastalari_getir(self):
