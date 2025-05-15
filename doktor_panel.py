@@ -4,6 +4,9 @@ from PyQt5.QtCore import QRegularExpression, Qt, QDate, QTime
 from datetime import datetime
 import hashlib
 from styles import Styles
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 class HastaListePenceresi(QWidget):    
     def __init__(self, doktor, db):
@@ -400,6 +403,41 @@ class HastaEklePenceresi(QWidget):
         self.doktor = doktor
         self.db = db
 
+        # Email gönderim ayarları
+        self.email_ayarlari_frame = QFrame()
+        self.email_ayarlari_frame.setStyleSheet(Styles.get_inner_card_style())
+        email_ayarlari_layout = QVBoxLayout(self.email_ayarlari_frame)
+        
+        email_ayarlari_baslik = QLabel("📧 Email Gönderim Ayarları")
+        email_ayarlari_baslik.setStyleSheet(Styles.get_subtitle_style())
+        email_ayarlari_layout.addWidget(email_ayarlari_baslik)
+        
+        email_bilgi = QLabel("Not: Gmail kullanıyorsanız, Google Hesabınızda güvenlik ayarlarından 'Uygulama Şifreleri' oluşturmanız gerekir.")
+        email_bilgi.setStyleSheet("font-size: 12px; color: #e74c3c; font-style: italic;")
+        email_bilgi.setWordWrap(True)
+        email_ayarlari_layout.addWidget(email_bilgi)
+        
+        self.gonder_email = QLineEdit()
+        self.gonder_email.setPlaceholderText("Gönderici Email Adresi")
+        self.gonder_email.setStyleSheet(Styles.get_input_style())
+        email_ayarlari_layout.addWidget(self.gonder_email)
+        
+        self.gonder_sifre = QLineEdit()
+        self.gonder_sifre.setPlaceholderText("Gönderici Email Şifresi veya Uygulama Şifresi")
+        self.gonder_sifre.setEchoMode(QLineEdit.Password)
+        self.gonder_sifre.setStyleSheet(Styles.get_input_style())
+        email_ayarlari_layout.addWidget(self.gonder_sifre)
+        
+        gmail_bilgi_btn = QPushButton("Gmail Uygulama Şifresi Nasıl Alınır?")
+        gmail_bilgi_btn.setStyleSheet("background-color: #3498db; color: white; border: none; border-radius: 5px; padding: 5px;")
+        gmail_bilgi_btn.clicked.connect(self.gmail_bilgi_goster)
+        email_ayarlari_layout.addWidget(gmail_bilgi_btn)
+        
+        self.email_gonder_check = QComboBox()
+        self.email_gonder_check.addItems(["Evet, email gönder", "Hayır, email gönderme"])
+        self.email_gonder_check.setStyleSheet(Styles.get_modern_combobox_style())
+        email_ayarlari_layout.addWidget(self.email_gonder_check)
+
         self.tc_no_label = QLabel("TC Kimlik NO")
         self.tc_no = QLineEdit(self)
         self.tc_no.setPlaceholderText("Hasta TC Kimlik NO")
@@ -505,6 +543,7 @@ class HastaEklePenceresi(QWidget):
         foto_layout.addWidget(self.foto_button)
 
         layout = QVBoxLayout()
+        layout.addWidget(self.email_ayarlari_frame)
         layout.addWidget(self.tc_no_label)
         layout.addWidget(self.tc_no)
         layout.addWidget(self.ad_label)
@@ -537,6 +576,73 @@ class HastaEklePenceresi(QWidget):
         self.sifre_tekrar.clear()
         self.cinsiyet.setCurrentIndex(0)
         self.foto_temizle()
+
+    def email_gonder(self, alici_eposta, ad, soyad, tc_kimlik_no, sifre):
+        try:
+            if self.email_gonder_check.currentText() == "Hayır, email gönderme":
+                return True
+                
+            gonderen_eposta = self.gonder_email.text()
+            gonderen_sifre = self.gonder_sifre.text()
+            
+            if not gonderen_eposta or not gonderen_sifre:
+                QMessageBox.warning(self, "Email Ayarları Eksik", "Email göndermek için gönderici email ve şifresini girmelisiniz.")
+                return False
+            
+            # Email oluştur
+            mesaj = MIMEMultipart()
+            mesaj['From'] = gonderen_eposta
+            mesaj['To'] = alici_eposta
+            mesaj['Subject'] = "Diyabet Takip Uygulaması - Hesap Bilgileriniz"
+            
+            # Email içeriği
+            icerik = f"""
+            <html>
+            <head>
+                <style>
+                    body {{ font-family: Arial, sans-serif; color: #333; }}
+                    .container {{ padding: 20px; border: 1px solid #ddd; border-radius: 5px; }}
+                    h2 {{ color: #3498db; }}
+                    .bilgi {{ margin: 10px 0; }}
+                    .onemli {{ color: #e74c3c; font-weight: bold; }}
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h2>Diyabet Takip Uygulaması - Hesap Bilgileriniz</h2>
+                    <p>Sayın {ad} {soyad},</p>
+                    <p>Diyabet Takip Uygulamasına kaydınız başarıyla oluşturulmuştur. Aşağıda giriş bilgilerinizi bulabilirsiniz:</p>
+                    
+                    <div class="bilgi">
+                        <strong>Kullanıcı Adı (TC Kimlik No):</strong> {tc_kimlik_no}
+                    </div>
+                    <div class="bilgi">
+                        <strong>Şifre:</strong> {sifre}
+                    </div>
+                    
+                    <p class="onemli">Giriş yaptıktan sonra şifrenizi değiştirmenizi öneririz.</p>
+                    
+                    <p>İyi günler dileriz,<br>
+                    Diyabet Takip Uygulaması Ekibi</p>
+                </div>
+            </body>
+            </html>
+            """
+            
+            mesaj.attach(MIMEText(icerik, 'html'))
+            
+            # SMTP bağlantısı
+            server = smtplib.SMTP('smtp.gmail.com', 587)
+            server.starttls()
+            server.login(gonderen_eposta, gonderen_sifre)
+            server.send_message(mesaj)
+            server.quit()
+            
+            return True
+            
+        except Exception as e:
+            QMessageBox.warning(self, "Email Gönderme Hatası", f"Email gönderilirken bir hata oluştu: {str(e)}")
+            return False
 
     def HastaKayitOlustur(self): 
         tc = self.tc_no.text()
@@ -574,7 +680,14 @@ class HastaEklePenceresi(QWidget):
             hasta_id = self.db.add_patient(tc, ad, soyad, dogum_tarihi, sifre_hash, cinsiyet, eposta, profil_bytes)
             self.db.add_patient_doctor_relation(self.doktor['id'], hasta_id)
             
-            QMessageBox.information(self, "Başarılı", "Yeni hasta kaydınız başarıyla yapılmıştır.")
+            # Email gönderme işlemi
+            email_gonderildi = self.email_gonder(eposta, ad, soyad, tc, sifre)
+            
+            basari_mesaji = "Yeni hasta kaydınız başarıyla yapılmıştır."
+            if email_gonderildi and self.email_gonder_check.currentText() == "Evet, email gönder":
+                basari_mesaji += " Bilgiler hastanın e-posta adresine gönderildi."
+            
+            QMessageBox.information(self, "Başarılı", basari_mesaji)
             self.formu_temizle()
             if hasattr(self.parent(), 'hasta_listesine_git'):
                 self.parent().hasta_listesine_git()
@@ -596,6 +709,31 @@ class HastaEklePenceresi(QWidget):
         self.foto_label.setText("Henüz fotoğraf yok")
         self.secilen_foto_path = None
         self.foto_sil_button.hide()
+
+    def gmail_bilgi_goster(self):
+        bilgi_mesaji = """
+        <h3>Gmail Uygulama Şifresi Alma Adımları:</h3>
+        <ol>
+            <li>Google hesabınıza giriş yapın</li>
+            <li>'Google Hesabım' sayfasına gidin</li>
+            <li>'Güvenlik' sekmesini seçin</li>
+            <li>'Google'a giriş' bölümünde '2 Adımlı Doğrulama'yı etkinleştirin</li>
+            <li>Sonra aynı sayfada 'Uygulama Şifreleri' seçeneğini bulun</li>
+            <li>'Uygulama seçin' menüsünden 'Diğer (Özel ad)' seçeneğini seçin</li>
+            <li>Örneğin 'Diyabet Takip Uygulaması' yazın</li>
+            <li>'Oluştur' düğmesine tıklayın</li>
+            <li>Google, 16 haneli bir uygulama şifresi oluşturacaktır</li>
+            <li>Bu şifreyi kopyalayın ve uygulamamızdaki 'Gönderici Email Şifresi' alanına yapıştırın</li>
+        </ol>
+        <p>Bu uygulama şifresi, hesabınızı daha güvenli tutarken uygulamanın e-posta gönderebilmesini sağlayacaktır.</p>
+        """
+        
+        msgBox = QMessageBox()
+        msgBox.setWindowTitle("Gmail Uygulama Şifresi Alma")
+        msgBox.setTextFormat(Qt.RichText)
+        msgBox.setText(bilgi_mesaji)
+        msgBox.setStandardButtons(QMessageBox.Ok)
+        msgBox.exec_()
 
 class DoktorPanel(QWidget):
     def __init__(self, doktor, doktor_id, db):
