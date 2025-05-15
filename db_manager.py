@@ -191,4 +191,19 @@ class DatabaseManager:
             AND tarih BETWEEN %s AND %s
             ORDER BY tarih DESC
         """, (hasta_id, baslangic_tarih, bitis_tarih))
-        return self.cursor.fetchall() 
+        return self.cursor.fetchall()
+    
+    def add_doctor(self, tc_no, ad, soyad, dogum_tarihi, sifre_hash, cinsiyet, eposta, profil_resmi=None):
+        """Sisteme yeni bir doktor ekler"""
+        try:
+            self.cursor.execute("""
+                INSERT INTO kullanici (tc_kimlik_no, ad, soyad, dogum_tarihi, sifre_hash, cinsiyet, rol, eposta, profil_resmi)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (tc_no, ad, soyad, dogum_tarihi, sifre_hash, cinsiyet, 'doktor', eposta, profil_resmi))
+            doktor_id = self.cursor.fetchone()[0]
+            self.commit()
+            return doktor_id
+        except Exception as e:
+            self.rollback()
+            raise e 
