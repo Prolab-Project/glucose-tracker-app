@@ -206,4 +206,53 @@ class DatabaseManager:
             return doktor_id
         except Exception as e:
             self.rollback()
-            raise e 
+            raise e
+    
+    def add_insulin(self, hasta_id, tarih, ortalama_seker, doz_miktari):
+        """Hastaya ait insülin önerisini kaydeder"""
+        try:
+            # Önce aynı hasta ve tarih için kayıt var mı kontrol et
+            print(f"İnsülin kayıt kontrolü: Hasta ID={hasta_id}, Tarih={tarih}")
+            self.cursor.execute("""
+                SELECT id FROM insulin 
+                WHERE hasta_id = %s AND tarih = %s
+            """, (hasta_id, tarih))
+            existing = self.cursor.fetchone()
+            
+            if existing:
+                # Varsa güncelle
+                print(f"Mevcut insülin kaydı güncelleniyor: ID={existing[0]}")
+                self.cursor.execute("""
+                    UPDATE insulin 
+                    SET ortalama_seker = %s, doz_miktari = %s
+                    WHERE hasta_id = %s AND tarih = %s
+                """, (ortalama_seker, doz_miktari, hasta_id, tarih))
+            else:
+                # Yoksa yeni kayıt ekle
+                print("Yeni insülin kaydı ekleniyor")
+                self.cursor.execute("""
+                    INSERT INTO insulin (hasta_id, tarih, ortalama_seker, doz_miktari)
+                    VALUES (%s, %s, %s, %s)
+                """, (hasta_id, tarih, ortalama_seker, doz_miktari))
+            
+            self.commit()
+            print("İnsülin kayıt işlemi başarılı")
+        except Exception as e:
+            self.rollback()
+            print(f"İnsülin kayıt hatası: {str(e)}")
+            raise e
+    
+    def get_todays_insulin(self, hasta_id, tarih):
+        """Belirli bir tarihteki insülin önerisini getirir"""
+        print(f"İnsülin sorgusu: Hasta ID={hasta_id}, Tarih={tarih}")
+        try:
+            self.cursor.execute("""
+                SELECT * FROM insulin 
+                WHERE hasta_id = %s AND tarih = %s
+            """, (hasta_id, tarih))
+            result = self.cursor.fetchone()
+            print(f"İnsülin sorgu sonucu: {result}")
+            return result
+        except Exception as e:
+            print(f"İnsülin sorgu hatası: {str(e)}")
+            return None 
