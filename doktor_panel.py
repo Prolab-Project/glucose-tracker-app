@@ -54,7 +54,7 @@ class HastaListePenceresi(QWidget):
         self.goruntule_btn.setStyleSheet(Styles.get_button_style())
         self.goruntule_btn.clicked.connect(self.olcumleri_goruntule)
 
-        self.diyet_goruntule_btn = QPushButton("Diyet Görüntüle ")
+        self.diyet_goruntule_btn = QPushButton("🍽️ Diyet Takibi")
         self.diyet_goruntule_btn.setStyleSheet(Styles.get_button_style())
         self.diyet_goruntule_btn.clicked.connect(self.diyet_goruntule)
         
@@ -356,7 +356,12 @@ class HastaListePenceresi(QWidget):
         try:
             diyetler = self.db.get_patient_diets(self.secili_hasta_id)
             if not diyetler : 
-                QMessageBox.information(self, "Bilgi", f"Bu hasta (ID: {self.secili_hasta_id}) için diyet bilgisi bulunamamıştır")
+                cevap = QMessageBox.question(self, "Bilgi", 
+                    f"Bu hasta (ID: {self.secili_hasta_id}) için diyet bilgisi bulunamamıştır.\nYeni diyet eklemek ister misiniz?",
+                    QMessageBox.Yes | QMessageBox.No)
+                
+                if cevap == QMessageBox.Yes:
+                    self.diyet_ekle()
                 return
             
             dialog = QDialog(self) 
@@ -396,16 +401,187 @@ class HastaListePenceresi(QWidget):
             
             layout.addWidget(liste)
             
+            # Butonlar
+            buton_layout = QHBoxLayout()
+            
+            yeni_ekle_btn = QPushButton("Yeni Diyet Ekle")
+            yeni_ekle_btn.setStyleSheet(Styles.get_button_style())
+            yeni_ekle_btn.clicked.connect(lambda: [dialog.close(), self.diyet_ekle()])
+            
             kapat_btn = QPushButton("Kapat")
             kapat_btn.setStyleSheet(Styles.get_button_style())
             kapat_btn.clicked.connect(dialog.close)
             
-            layout.addWidget(kapat_btn, alignment=Qt.AlignCenter)
+            buton_layout.addWidget(yeni_ekle_btn)
+            buton_layout.addWidget(kapat_btn)
+            
+            layout.addLayout(buton_layout)
             
             dialog.setLayout(layout)
             dialog.exec_()
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Diyet bilgileri görüntülenirken bir hata oluştu:\n{str(e)}")
+
+    def diyet_ekle(self):
+        if not self.secili_hasta_id or not self.secili_hasta:
+            QMessageBox.warning(self, "Uyarı", "Lütfen önce bir hasta seçin.")
+            return
+            
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{self.secili_hasta['ad']} {self.secili_hasta['soyad']} - Diyet Ekle")
+        dialog.setMinimumSize(400, 500) 
+        
+        main_layout = QVBoxLayout(dialog)
+        main_layout.setContentsMargins(10, 10, 10, 10)  # Kenar boşluklarını azalt
+        main_layout.setSpacing(10)
+        
+        # Ana kart frame
+        main_card = QFrame()
+        main_card.setStyleSheet(Styles.get_modern_card_style())
+        card_layout = QVBoxLayout(main_card)
+        card_layout.setContentsMargins(15, 15, 15, 15)  
+        card_layout.setSpacing(10) 
+        
+        baslik = QLabel("🍽 Diyet Ekle")
+        baslik.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        
+        hasta_bilgisi = QLabel(f"Hasta: {self.secili_hasta['ad']} {self.secili_hasta['soyad']}")
+        hasta_bilgisi.setStyleSheet("font-size: 14px; color: #3498db;")
+        card_layout.addWidget(hasta_bilgisi, alignment=Qt.AlignCenter)
+        
+        # Tarih seçimi
+        tarih_frame = QFrame()
+        tarih_frame.setStyleSheet(Styles.get_inner_card_style())
+        tarih_layout = QVBoxLayout(tarih_frame)
+        
+        tarih_baslik = QLabel("📅 Tarih")
+        tarih_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #2c3e50;")
+        tarih_layout.addWidget(tarih_baslik)
+        
+        tarih = QDateEdit()
+        tarih.setDate(QDate.currentDate())
+        tarih.setCalendarPopup(True)
+        tarih.setStyleSheet("""
+            QDateEdit {
+                border: 1px solid #3498db;
+                border-radius: 5px;
+                padding: 3px;
+                background-color: white;
+                font-size: 12px;
+                min-height: 25px;
+            }
+        """)
+        tarih_layout.addWidget(tarih)
+        
+        # Diyet türü seçimi
+        diyet_frame = QFrame()
+        diyet_frame.setStyleSheet(Styles.get_inner_card_style())
+        diyet_layout = QVBoxLayout(diyet_frame)
+        
+        diyet_baslik = QLabel("🥗 Diyet Türü")
+        diyet_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #2c3e50;")
+        diyet_layout.addWidget(diyet_baslik)
+        
+        diyet_turu = QComboBox()
+        diyet_turu.addItems(["Az Şekerli Diyet", "Şekersiz Diyet", "Dengeli Beslenme"])
+        diyet_turu.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #3498db;
+                border-radius: 5px;
+                padding: 3px;
+                background-color: white;
+                font-size: 12px;
+                min-height: 25px;
+            }
+        """)
+        diyet_layout.addWidget(diyet_turu)
+        
+        # Diyet durumu
+        durum_frame = QFrame()
+        durum_frame.setStyleSheet(Styles.get_inner_card_style())
+        durum_layout = QVBoxLayout(durum_frame)
+        
+        durum_baslik = QLabel("✅ Diyet Durumu")
+        durum_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #2c3e50;")
+        durum_layout.addWidget(durum_baslik)
+        
+        diyet_uygulandi = QComboBox()
+        diyet_uygulandi.addItems(["Uygulandı", "Uygulanmadı"])
+        diyet_uygulandi.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #3498db;
+                border-radius: 5px;
+                padding: 3px;
+                background-color: white;
+                font-size: 12px;
+                min-height: 25px;
+            }
+        """)
+        durum_layout.addWidget(diyet_uygulandi)
+        
+        buton_layout = QHBoxLayout()  
+        
+        kaydet_btn = QPushButton("Kaydet")
+        kaydet_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 13px;
+            }
+        """)
+        
+        kaydet_btn.clicked.connect(lambda: self.diyet_kaydet_dialog(
+            dialog, 
+            self.secili_hasta_id, 
+            tarih.date().toPyDate(),
+            diyet_turu.currentText(),
+            diyet_uygulandi.currentText() == "Uygulandı"
+        ))
+        
+        iptal_btn = QPushButton("İptal")
+        iptal_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 13px;
+            }
+        """)
+        iptal_btn.clicked.connect(dialog.reject)
+        
+        buton_layout.addWidget(kaydet_btn)
+        buton_layout.addWidget(iptal_btn)
+        
+        # Kartları ana karta ekle
+        card_layout.addWidget(tarih_frame)
+        card_layout.addWidget(diyet_frame)
+        card_layout.addWidget(durum_frame)
+        card_layout.addLayout(buton_layout)  
+        
+        main_layout.addWidget(main_card)
+        
+        dialog.exec_()
+    
+    def diyet_kaydet_dialog(self, dialog, hasta_id, tarih, diyet_turu, diyet_uygulandi):
+        try:
+            self.db.add_diet(
+                hasta_id,
+                tarih,
+                diyet_turu,
+                diyet_uygulandi
+            )
+            QMessageBox.information(self, "Başarılı", "Diyet kaydedildi.")
+            dialog.accept()
+            # Diyet listesini yenilemek için yeniden görüntüleme
+            self.diyet_goruntule()
+        except Exception as e:
+            QMessageBox.warning(self, "Hata", f"Diyet kaydedilirken bir hata oluştu: {str(e)}")
 
     def hasta_detaylarini_goster(self, item):
         tc = item.text().split("TC: ")[-1]
