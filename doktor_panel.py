@@ -58,6 +58,10 @@ class HastaListePenceresi(QWidget):
         self.diyet_goruntule_btn.setStyleSheet(Styles.get_button_style())
         self.diyet_goruntule_btn.clicked.connect(self.diyet_goruntule)
         
+        self.insulin_oneri_btn = QPushButton("💉 İnsülin Öneri")
+        self.insulin_oneri_btn.setStyleSheet(Styles.get_button_style())
+        self.insulin_oneri_btn.clicked.connect(self.insulin_oneri)
+        
         self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
         self.guncelle_btn.setStyleSheet(Styles.get_button_style())
         
@@ -65,10 +69,12 @@ class HastaListePenceresi(QWidget):
         self.goruntule_btn.setEnabled(False)
         self.guncelle_btn.setEnabled(False)
         self.diyet_goruntule_btn.setEnabled(False)
+        self.insulin_oneri_btn.setEnabled(False)
         
         self.detay_layout.addWidget(self.olcum_ekle_btn)
         self.detay_layout.addWidget(self.goruntule_btn)
         self.detay_layout.addWidget(self.diyet_goruntule_btn)
+        self.detay_layout.addWidget(self.insulin_oneri_btn)
         self.detay_layout.addWidget(self.guncelle_btn)
 
         baslik_label = QLabel("🩺 Hastalarım")
@@ -155,11 +161,11 @@ class HastaListePenceresi(QWidget):
         ogun_label.setStyleSheet("font-size: 12px;")
         olcum_zamani = QComboBox()
         olcum_zamani.addItems([
-            "Sabah (07:00-08:00)", 
-            "Öğle (12:00-13:00)", 
-            "İkindi (15:00-16:00)", 
-            "Akşam (18:00-19:00)", 
-            "Gece (22:00-23:00)"
+            "Sabah", 
+            "Öğle", 
+            "İkindi", 
+            "Akşam", 
+            "Gece"
         ])
         olcum_zamani.setStyleSheet("""
             QComboBox {
@@ -633,6 +639,7 @@ class HastaListePenceresi(QWidget):
             self.goruntule_btn.setEnabled(True)
             self.guncelle_btn.setEnabled(True)
             self.diyet_goruntule_btn.setEnabled(True)
+            self.insulin_oneri_btn.setEnabled(True)
             
 
     def hastalari_getir(self):
@@ -640,6 +647,325 @@ class HastaListePenceresi(QWidget):
         hastalar = self.db.get_doctor_patients(self.doktor['id'])
         for hasta in hastalar:
             self.hasta_listesi.addItem(f"{hasta[2]} {hasta[3]} - TC: {hasta[1]}")
+
+    def insulin_oneri(self):
+        if not self.secili_hasta_id or not self.secili_hasta:
+            QMessageBox.warning(self, "Uyarı", "Lütfen önce bir hasta seçin.")
+            return
+        
+        try:
+            olcumler = self.db.get_patient_measurements(self.secili_hasta_id)
+            bugun = datetime.now().date()
+            bugun_olcumler = [o for o in olcumler if o[3].date() == bugun]
+            
+            if not bugun_olcumler:
+                cevap = QMessageBox.question(
+                    self, 
+                    "Uyarı", 
+                    "Bugün için ölçüm bulunmamaktadır. Geçmiş tarihli bir ölçüm için öneri yapmak ister misiniz?",
+                    QMessageBox.Yes | QMessageBox.No
+                )
+                
+                if cevap == QMessageBox.Yes:
+                    self.insulin_oneri_tarih_sec()
+                return
+            
+            self.insulin_hesapla(bugun_olcumler)
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"İnsülin önerisi oluşturulurken bir hata oluştu:\n{str(e)}")
+    
+    def insulin_oneri_tarih_sec(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Tarih Seçin")
+        dialog.setMinimumWidth(300)
+        
+        layout = QVBoxLayout()
+        
+        tarih_label = QLabel("İnsülin önerisi için tarih seçin:")
+        tarih = QDateEdit()
+        tarih.setDate(QDate.currentDate())
+        tarih.setCalendarPopup(True)
+        tarih.setMaximumDate(QDate.currentDate())
+        tarih.setStyleSheet(Styles.get_modern_dateedit_style())
+        
+        buton_layout = QHBoxLayout()
+        tamam_btn = QPushButton("Tamam")
+        tamam_btn.setStyleSheet(Styles.get_button_style())
+        tamam_btn.clicked.connect(lambda: self.secili_tarih_olcumleri_al(dialog, tarih.date()))
+        
+        iptal_btn = QPushButton("İptal")
+        iptal_btn.setStyleSheet(Styles.get_button_style())
+        iptal_btn.clicked.connect(dialog.reject)
+        
+        buton_layout.addWidget(tamam_btn)
+        buton_layout.addWidget(iptal_btn)
+        
+        layout.addWidget(tarih_label)
+        layout.addWidget(tarih)
+        layout.addLayout(buton_layout)
+        
+        dialog.setLayout(layout)
+        dialog.exec_()
+    
+    def secili_tarih_olcumleri_al(self, dialog, tarih):
+        secili_tarih = tarih.toPyDate()
+        
+        olcumler = self.db.get_patient_measurements(self.secili_hasta_id)
+        secili_tarih_olcumler = [o for o in olcumler if o[3].date() == secili_tarih]
+        
+        if not secili_tarih_olcumler:
+            QMessageBox.warning(self, "Uyarı", f"{secili_tarih.strftime('%d.%m.%Y')} tarihinde ölçüm bulunmamaktadır.")
+            return
+        
+        dialog.accept()
+        self.insulin_hesapla(secili_tarih_olcumler)
+    
+    def insulin_hesapla(self, olcumler):
+        sabah_olcumler = []
+        ogle_olcumler = []
+        ikindi_olcumler = []
+        aksam_olcumler = []
+        gece_olcumler = []
+        
+        for olcum in olcumler:
+            olcum_zamani = olcum[5] if olcum[5] else ""
+            kan_seker_degeri = olcum[4]
+            ortalamaya_dahil = olcum[6]
+            
+            if not ortalamaya_dahil:
+                continue
+                
+            if "Sabah" in olcum_zamani:
+                sabah_olcumler.append(kan_seker_degeri)
+            elif "Öğle" in olcum_zamani:
+                ogle_olcumler.append(kan_seker_degeri)
+            elif "İkindi" in olcum_zamani:
+                ikindi_olcumler.append(kan_seker_degeri)
+            elif "Akşam" in olcum_zamani:
+                aksam_olcumler.append(kan_seker_degeri)
+            elif "Gece" in olcum_zamani:
+                gece_olcumler.append(kan_seker_degeri)
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"İnsülin Önerisi - {self.secili_hasta['ad']} {self.secili_hasta['soyad']}")
+        dialog.setMinimumSize(600, 500)
+        
+        main_layout = QVBoxLayout()
+        
+        main_card = QFrame()
+        main_card.setStyleSheet(Styles.get_modern_card_style())
+        card_layout = QVBoxLayout(main_card)
+        
+        baslik = QLabel("💉 İnsülin Doz Önerisi")
+        baslik.setStyleSheet("font-size: 20px; font-weight: bold; color: #2c3e50;")
+        card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        
+        hasta_bilgisi = QLabel(f"Hasta: {self.secili_hasta['ad']} {self.secili_hasta['soyad']}")
+        hasta_bilgisi.setStyleSheet("font-size: 16px; color: #3498db;")
+        card_layout.addWidget(hasta_bilgisi, alignment=Qt.AlignCenter)
+        
+        tarih = olcumler[0][3].date() if olcumler else datetime.now().date()
+        tarih_bilgisi = QLabel(f"Tarih: {tarih.strftime('%d.%m.%Y')}")
+        tarih_bilgisi.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+        card_layout.addWidget(tarih_bilgisi, alignment=Qt.AlignCenter)
+        
+        tablo_frame = QFrame()
+        tablo_frame.setStyleSheet(Styles.get_inner_card_style())
+        tablo_layout = QVBoxLayout(tablo_frame)
+        
+        tablo_baslik = QLabel("Ölçüm Değerleri ve Öneriler")
+        tablo_baslik.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50; margin-bottom: 10px;")
+        tablo_layout.addWidget(tablo_baslik)
+        
+        uyari_mesajlari = []
+        eksik_olcumler = []
+        
+        if not sabah_olcumler:
+            eksik_olcumler.append("Sabah")
+        if not ogle_olcumler:
+            eksik_olcumler.append("Öğle")
+        if not ikindi_olcumler:
+            eksik_olcumler.append("İkindi")
+        if not aksam_olcumler:
+            eksik_olcumler.append("Akşam")
+        if not gece_olcumler:
+            eksik_olcumler.append("Gece")
+        
+        if eksik_olcumler:
+            eksik_mesaj = f"Eksik ölçümler: {', '.join(eksik_olcumler)}. Bu ölçümler ortalamaya dahil edilmedi."
+            uyari_mesajlari.append(eksik_mesaj)
+        
+        toplam_olcum = len(sabah_olcumler) + len(ogle_olcumler) + len(ikindi_olcumler) + len(aksam_olcumler) + len(gece_olcumler)
+        if toplam_olcum <= 3:
+            uyari_mesajlari.append("Yetersiz veri! Ortalama hesaplaması güvenilir değildir.")
+        
+        if uyari_mesajlari:
+            uyari_frame = QFrame()
+            uyari_frame.setStyleSheet("background-color: #fff3cd; border-radius: 8px; padding: 10px; border: 1px solid #ffeeba;")
+            uyari_layout = QVBoxLayout(uyari_frame)
+            
+            uyari_icon = QLabel("⚠️")
+            uyari_icon.setStyleSheet("font-size: 20px;")
+            uyari_layout.addWidget(uyari_icon, alignment=Qt.AlignCenter)
+            
+            for mesaj in uyari_mesajlari:
+                uyari_label = QLabel(mesaj)
+                uyari_label.setStyleSheet("color: #856404; font-size: 14px;")
+                uyari_label.setWordWrap(True)
+                uyari_layout.addWidget(uyari_label)
+            
+            tablo_layout.addWidget(uyari_frame)
+        
+        sabah_deger = sabah_olcumler[0] if sabah_olcumler else None
+        sabah_ortalama = sabah_deger if sabah_deger else 0
+        sabah_insulin = self.insulin_doz_hesapla(sabah_ortalama) if sabah_deger else "Veri yok"
+        
+        ogle_deger = ogle_olcumler[0] if ogle_olcumler else None
+        if sabah_deger and ogle_deger:
+            ogle_ortalama = (sabah_deger + ogle_deger) / 2
+        elif ogle_deger:
+            ogle_ortalama = ogle_deger
+        else:
+            ogle_ortalama = 0
+        ogle_insulin = self.insulin_doz_hesapla(ogle_ortalama) if ogle_ortalama > 0 else "Veri yok"
+        
+        ikindi_deger = ikindi_olcumler[0] if ikindi_olcumler else None
+        ikindi_degerler = [d for d in [sabah_deger, ogle_deger, ikindi_deger] if d is not None]
+        ikindi_ortalama = sum(ikindi_degerler) / len(ikindi_degerler) if ikindi_degerler else 0
+        ikindi_insulin = self.insulin_doz_hesapla(ikindi_ortalama) if ikindi_ortalama > 0 else "Veri yok"
+        
+        aksam_deger = aksam_olcumler[0] if aksam_olcumler else None
+        aksam_degerler = [d for d in [sabah_deger, ogle_deger, ikindi_deger, aksam_deger] if d is not None]
+        aksam_ortalama = sum(aksam_degerler) / len(aksam_degerler) if aksam_degerler else 0
+        aksam_insulin = self.insulin_doz_hesapla(aksam_ortalama) if aksam_ortalama > 0 else "Veri yok"
+        
+        gece_deger = gece_olcumler[0] if gece_olcumler else None
+        gece_degerler = [d for d in [sabah_deger, ogle_deger, ikindi_deger, aksam_deger, gece_deger] if d is not None]
+        gece_ortalama = sum(gece_degerler) / len(gece_degerler) if gece_degerler else 0
+        gece_insulin = self.insulin_doz_hesapla(gece_ortalama) if gece_ortalama > 0 else "Veri yok"
+        
+        tablo_html = f"""
+        <style>
+            table {{
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 10px;
+            }}
+            th, td {{
+                border: 1px solid #ddd;
+                padding: 8px;
+                text-align: left;
+            }}
+            th {{
+                background-color: #f2f2f2;
+                color: #333;
+            }}
+            .warning {{
+                color: #e74c3c;
+                font-weight: bold;
+            }}
+            .normal {{
+                color: #27ae60;
+                font-weight: bold;
+            }}
+            .high {{
+                color: #e67e22;
+                font-weight: bold;
+            }}
+            .very-high {{
+                color: #c0392b;
+                font-weight: bold;
+            }}
+        </style>
+        <table>
+            <tr>
+                <th>Zaman</th>
+                <th>Ölçüm Değeri</th>
+                <th>Ortalama</th>
+                <th>İnsülin Önerisi</th>
+            </tr>
+            <tr>
+                <td>Sabah</td>
+                <td>{sabah_deger if sabah_deger else 'Veri yok'}</td>
+                <td>{round(sabah_ortalama, 1) if sabah_ortalama > 0 else 'Veri yok'}</td>
+                <td>{sabah_insulin}</td>
+            </tr>
+            <tr>
+                <td>Öğle</td>
+                <td>{ogle_deger if ogle_deger else 'Veri yok'}</td>
+                <td>{round(ogle_ortalama, 1) if ogle_ortalama > 0 else 'Veri yok'}</td>
+                <td>{ogle_insulin}</td>
+            </tr>
+            <tr>
+                <td>İkindi</td>
+                <td>{ikindi_deger if ikindi_deger else 'Veri yok'}</td>
+                <td>{round(ikindi_ortalama, 1) if ikindi_ortalama > 0 else 'Veri yok'}</td>
+                <td>{ikindi_insulin}</td>
+            </tr>
+            <tr>
+                <td>Akşam</td>
+                <td>{aksam_deger if aksam_deger else 'Veri yok'}</td>
+                <td>{round(aksam_ortalama, 1) if aksam_ortalama > 0 else 'Veri yok'}</td>
+                <td>{aksam_insulin}</td>
+            </tr>
+            <tr>
+                <td>Gece</td>
+                <td>{gece_deger if gece_deger else 'Veri yok'}</td>
+                <td>{round(gece_ortalama, 1) if gece_ortalama > 0 else 'Veri yok'}</td>
+                <td>{gece_insulin}</td>
+            </tr>
+        </table>
+        """
+        
+        sonuc_label = QLabel(tablo_html)
+        tablo_layout.addWidget(sonuc_label)
+        
+        # İnsülin doz bilgisi
+        bilgi_frame = QFrame()
+        bilgi_frame.setStyleSheet("background-color: #d4edda; border-radius: 8px; padding: 10px; border: 1px solid #c3e6cb;")
+        bilgi_layout = QVBoxLayout(bilgi_frame)
+        
+        bilgi_baslik = QLabel("📋 İnsülin Doz Bilgisi")
+        bilgi_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #155724;")
+        bilgi_layout.addWidget(bilgi_baslik)
+        
+        bilgi_icerik = QLabel("""
+        <ul>
+            <li>< 70 mg/dL (Hipoglisemi): İnsülin önerilmez</li>
+            <li>70–110 mg/dL (Normal): İnsülin önerilmez</li>
+            <li>111–150 mg/dL (Orta Yüksek): 1 ml insülin önerilir</li>
+            <li>151–200 mg/dL (Yüksek): 2 ml insülin önerilir</li>
+            <li>> 200 mg/dL (Çok Yüksek): 3 ml insülin önerilir</li>
+        </ul>
+        """)
+        bilgi_icerik.setStyleSheet("color: #155724; font-size: 13px;")
+        bilgi_layout.addWidget(bilgi_icerik)
+        
+        tablo_layout.addWidget(bilgi_frame)
+        
+        kapat_btn = QPushButton("Kapat")
+        kapat_btn.setStyleSheet(Styles.get_button_style())
+        kapat_btn.clicked.connect(dialog.close)
+        
+        card_layout.addWidget(tablo_frame)
+        card_layout.addWidget(kapat_btn, alignment=Qt.AlignCenter)
+        
+        main_layout.addWidget(main_card)
+        dialog.setLayout(main_layout)
+        dialog.exec_()
+    
+    def insulin_doz_hesapla(self, ortalama):
+        if ortalama < 70:
+            return "Önerilmez (Hipoglisemi)"
+        elif ortalama <= 110:
+            return "Önerilmez (Normal)"
+        elif ortalama <= 150:
+            return "1 ml (Orta Yüksek)"
+        elif ortalama <= 200:
+            return "2 ml (Yüksek)"
+        else:
+            return "3 ml (Çok Yüksek)"
 
 class HastaEklePenceresi(QWidget): 
     def __init__(self, doktor, db):
