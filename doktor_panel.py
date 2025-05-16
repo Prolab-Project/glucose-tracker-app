@@ -353,53 +353,59 @@ class HastaListePenceresi(QWidget):
         if not self.secili_hasta_id : 
             QMessageBox.warning(self, "Uyarı", "Lutfen bir hasta seçiniz.")
             return
-        diyetler = self.db.get_patient_diets(self.secili_hasta_id)
-        if not diyetler : 
-            QMessageBox.information(self, "Bilgi", "Bu hasta için diyet bilgisi bulunamamıştır")
-            return
-        dialog = QDialog(self) 
-        dialog.setWindowTitle("Hasta diyet bilgileri")
-        dialog.setMinimumSize(600,400)
-
-        layout = QVBoxLayout() 
-
-        hasta = self.db.get_user_by_id(self.secili_hasta_id)
-        if hasta:
-            baslik = QLabel(f"{hasta[2]} {hasta[3]} - Diyet Bilgileri")
-        else : 
-            baslik= QLabel("Diyet bilgileri")        
-        baslik.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
-        layout.addWidget(baslik)
-        
-        liste = QListWidget()
-        liste.setStyleSheet("""
-            QListWidget {
-                border: 1px solid #ccc;
-                border-radius: 5px;
-                font-size: 14px;
-                padding: 5px;
-            }
-            QListWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #eee;
-            }
-        """)        
-        for diyet in diyetler :
-            tarih = diyet[2].strftime("%d.%m.%Y")
-            diyet_turu = diyet[3]
-            diyet_uygulandi = diyet[4] 
+        try:
+            diyetler = self.db.get_patient_diets(self.secili_hasta_id)
+            if not diyetler : 
+                QMessageBox.information(self, "Bilgi", f"Bu hasta (ID: {self.secili_hasta_id}) için diyet bilgisi bulunamamıştır")
+                return
             
-            item_text= f"{tarih} - Diyet Türü{diyet_turu} Diyet Uygulandı Mı ? {diyet_uygulandi}"
-            liste.addItem(item_text)
-        
-        kapat_btn = QPushButton("Kapat")
-        kapat_btn.setStyleSheet(Styles.get_button_style())
-        kapat_btn.clicked.connect(dialog.close)
-        
-        layout.addWidget(kapat_btn, alignment=Qt.AlignCenter)
-        
-        dialog.setLayout(layout)
-        dialog.exec_()
+            dialog = QDialog(self) 
+            dialog.setWindowTitle("Hasta diyet bilgileri")
+            dialog.setMinimumSize(600,400)
+
+            layout = QVBoxLayout() 
+
+            hasta = self.db.get_user_by_id(self.secili_hasta_id)
+            if hasta:
+                baslik = QLabel(f"{hasta[2]} {hasta[3]} - Diyet Bilgileri")
+            else : 
+                baslik= QLabel("Diyet bilgileri")        
+            baslik.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+            layout.addWidget(baslik)
+            
+            liste = QListWidget()
+            liste.setStyleSheet("""
+                QListWidget {
+                    border: 1px solid #ccc;
+                    border-radius: 5px;
+                    font-size: 14px;
+                    padding: 5px;
+                }
+                QListWidget::item {
+                    padding: 8px;
+                    border-bottom: 1px solid #eee;
+                }
+            """)        
+            for diyet in diyetler:
+                tarih = diyet[2].strftime("%d.%m.%Y")
+                diyet_turu = diyet[3]
+                diyet_uygulandi = diyet[4] 
+                
+                item_text= f"{tarih} - Diyet Türü: {diyet_turu} - Diyet Uygulandı Mı? {'Evet' if diyet_uygulandi else 'Hayır'}"
+                liste.addItem(item_text)
+            
+            layout.addWidget(liste)
+            
+            kapat_btn = QPushButton("Kapat")
+            kapat_btn.setStyleSheet(Styles.get_button_style())
+            kapat_btn.clicked.connect(dialog.close)
+            
+            layout.addWidget(kapat_btn, alignment=Qt.AlignCenter)
+            
+            dialog.setLayout(layout)
+            dialog.exec_()
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Diyet bilgileri görüntülenirken bir hata oluştu:\n{str(e)}")
 
     def hasta_detaylarini_goster(self, item):
         tc = item.text().split("TC: ")[-1]
