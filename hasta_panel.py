@@ -636,7 +636,30 @@ class DashboardPenceresi(QWidget):
         
         if bugun_olcumler:
             ortalama = sum(o[4] for o in bugun_olcumler) / len(bugun_olcumler)
-            self.kan_sekeri_label.setText(f"Günlük Kan Şekeri Ortalaması: {ortalama:.1f} mg/dL")
+            
+            # Günlük insülin önerisini kontrol et
+            try:
+                print(f"İnsülin önerisi kontrol ediliyor: Hasta ID={self.hasta['id']}, Tarih={bugun}")
+                insulin_oneri = self.db.get_todays_insulin(self.hasta['id'], bugun)
+                print(f"İnsülin önerisi sonucu: {insulin_oneri}")
+                
+                if insulin_oneri:
+                    doz = insulin_oneri[4]  # doz_miktari
+                    print(f"İnsülin doz miktarı: {doz}")
+                    if doz > 0:
+                        self.kan_sekeri_label.setText(f"<span style='color:#2c3e50;'>Günlük Kan Şekeri Ortalaması:</span> <b style='color:#e74c3c;'>{ortalama:.1f} mg/dL</b> &nbsp;&nbsp; <span style='color:#2c3e50;'>İnsülin Önerisi:</span> <b style='color:#3498db;'>{doz} ml</b>")
+                        self.kan_sekeri_label.setTextFormat(Qt.RichText)
+                    else:
+                        self.kan_sekeri_label.setText(f"<span style='color:#2c3e50;'>Günlük Kan Şekeri Ortalaması:</span> <b style='color:#2ecc71;'>{ortalama:.1f} mg/dL</b> &nbsp;&nbsp; <span style='color:#2c3e50;'>İnsülin Önerisi:</span> <b style='color:#2ecc71;'>Önerilmez</b>")
+                        self.kan_sekeri_label.setTextFormat(Qt.RichText)
+                else:
+                    print("İnsülin önerisi bulunamadı")
+                    self.kan_sekeri_label.setText(f"<span style='color:#2c3e50;'>Günlük Kan Şekeri Ortalaması:</span> <b style='color:#e74c3c;'>{ortalama:.1f} mg/dL</b>")
+                    self.kan_sekeri_label.setTextFormat(Qt.RichText)
+            except Exception as e:
+                print(f"İnsülin önerisi alınırken hata: {str(e)}")
+                self.kan_sekeri_label.setText(f"<span style='color:#2c3e50;'>Günlük Kan Şekeri Ortalaması:</span> <b style='color:#e74c3c;'>{ortalama:.1f} mg/dL</b>")
+                self.kan_sekeri_label.setTextFormat(Qt.RichText)
             
             degerler_text = "Günlük Ölçümler:\n"
             for olcum in bugun_olcumler:
@@ -646,7 +669,8 @@ class DashboardPenceresi(QWidget):
                 degerler_text += f"• {saat} ({zamani}): {deger} mg/dL\n"
             self.degerler_label.setText(degerler_text)
         else:
-            self.kan_sekeri_label.setText("Günlük Kan Şekeri Ortalaması: -- mg/dL")
+            self.kan_sekeri_label.setText("<span style='color:#7f8c8d;'>Günlük Kan Şekeri Ortalaması: -- mg/dL</span>")
+            self.kan_sekeri_label.setTextFormat(Qt.RichText)
             self.degerler_label.setText("Bugün için ölçüm bulunmamaktadır.")
         
         egzersizler = self.db.get_patient_exercises(self.hasta['id'])

@@ -845,6 +845,31 @@ class HastaListePenceresi(QWidget):
         gece_ortalama = sum(gece_degerler) / len(gece_degerler) if gece_degerler else 0
         gece_insulin = self.insulin_doz_hesapla(gece_ortalama) if gece_ortalama > 0 else "Veri yok"
         
+        # Genel ortalama ve insülin önerisi
+        tum_degerler = [d for d in [sabah_deger, ogle_deger, ikindi_deger, aksam_deger, gece_deger] if d is not None]
+        genel_ortalama = sum(tum_degerler) / len(tum_degerler) if tum_degerler else 0
+        genel_insulin_oneri = self.insulin_doz_hesapla(genel_ortalama) if genel_ortalama > 0 else "Veri yok"
+        
+        # İnsülin önerisini veritabanına kaydet
+        try:
+            if genel_ortalama > 0:
+                # İnsülin doz miktarını sayısal değer olarak al
+                if "ml" in genel_insulin_oneri:
+                    doz_miktari = float(genel_insulin_oneri.split(" ")[0])
+                else:
+                    doz_miktari = 0
+                
+                print(f"İnsülin kaydediliyor: Hasta ID={self.secili_hasta_id}, Tarih={tarih}, Ortalama={genel_ortalama}, Doz={doz_miktari}")
+                self.db.add_insulin(
+                    self.secili_hasta_id,
+                    tarih,
+                    genel_ortalama,
+                    doz_miktari
+                )
+                print("İnsülin kaydı başarılı")
+        except Exception as e:
+            print(f"İnsülin kaydedilirken hata: {str(e)}")
+        
         tablo_html = f"""
         <style>
             table {{
@@ -914,6 +939,12 @@ class HastaListePenceresi(QWidget):
                 <td>{gece_deger if gece_deger else 'Veri yok'}</td>
                 <td>{round(gece_ortalama, 1) if gece_ortalama > 0 else 'Veri yok'}</td>
                 <td>{gece_insulin}</td>
+            </tr>
+            <tr style="background-color: #e8f4f8; font-weight: bold;">
+                <td>Genel</td>
+                <td>-</td>
+                <td>{round(genel_ortalama, 1) if genel_ortalama > 0 else 'Veri yok'}</td>
+                <td>{genel_insulin_oneri}</td>
             </tr>
         </table>
         """
