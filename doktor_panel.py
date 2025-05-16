@@ -62,6 +62,14 @@ class HastaListePenceresi(QWidget):
         self.insulin_oneri_btn.setStyleSheet(Styles.get_button_style())
         self.insulin_oneri_btn.clicked.connect(self.insulin_oneri)
         
+        self.belirti_ekle_btn = QPushButton("⚠️ Belirti Ekle")
+        self.belirti_ekle_btn.setStyleSheet(Styles.get_button_style())
+        self.belirti_ekle_btn.clicked.connect(self.belirti_ekle)
+        
+        self.belirti_goruntule_btn = QPushButton("📋 Belirtileri Görüntüle")
+        self.belirti_goruntule_btn.setStyleSheet(Styles.get_button_style())
+        self.belirti_goruntule_btn.clicked.connect(self.belirtileri_goruntule)
+        
         self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
         self.guncelle_btn.setStyleSheet(Styles.get_button_style())
         
@@ -70,11 +78,15 @@ class HastaListePenceresi(QWidget):
         self.guncelle_btn.setEnabled(False)
         self.diyet_goruntule_btn.setEnabled(False)
         self.insulin_oneri_btn.setEnabled(False)
+        self.belirti_ekle_btn.setEnabled(False)
+        self.belirti_goruntule_btn.setEnabled(False)
         
         self.detay_layout.addWidget(self.olcum_ekle_btn)
         self.detay_layout.addWidget(self.goruntule_btn)
         self.detay_layout.addWidget(self.diyet_goruntule_btn)
         self.detay_layout.addWidget(self.insulin_oneri_btn)
+        self.detay_layout.addWidget(self.belirti_ekle_btn)
+        self.detay_layout.addWidget(self.belirti_goruntule_btn)
         self.detay_layout.addWidget(self.guncelle_btn)
 
         baslik_label = QLabel("🩺 Hastalarım")
@@ -640,6 +652,8 @@ class HastaListePenceresi(QWidget):
             self.guncelle_btn.setEnabled(True)
             self.diyet_goruntule_btn.setEnabled(True)
             self.insulin_oneri_btn.setEnabled(True)
+            self.belirti_ekle_btn.setEnabled(True)
+            self.belirti_goruntule_btn.setEnabled(True)
             
 
     def hastalari_getir(self):
@@ -997,6 +1011,224 @@ class HastaListePenceresi(QWidget):
             return "2 ml (Yüksek)"
         else:
             return "3 ml (Çok Yüksek)"
+
+    def belirti_ekle(self):
+        if not self.secili_hasta_id or not self.secili_hasta:
+            QMessageBox.warning(self, "Uyarı", "Lütfen önce bir hasta seçin.")
+            return
+            
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{self.secili_hasta['ad']} {self.secili_hasta['soyad']} - Belirti Ekle")
+        dialog.setMinimumSize(400, 400) 
+        
+        main_layout = QVBoxLayout(dialog)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+        
+        main_card = QFrame()
+        main_card.setStyleSheet(Styles.get_modern_card_style())
+        card_layout = QVBoxLayout(main_card)
+        card_layout.setContentsMargins(15, 15, 15, 15)  
+        card_layout.setSpacing(10) 
+        
+        baslik = QLabel("⚠️ Belirti Ekle")
+        baslik.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        
+        hasta_bilgisi = QLabel(f"Hasta: {self.secili_hasta['ad']} {self.secili_hasta['soyad']}")
+        hasta_bilgisi.setStyleSheet("font-size: 14px; color: #3498db;")
+        card_layout.addWidget(hasta_bilgisi, alignment=Qt.AlignCenter)
+        
+        belirti_frame = QFrame()
+        belirti_frame.setStyleSheet(Styles.get_inner_card_style())
+        belirti_layout = QVBoxLayout(belirti_frame)
+        
+        belirti_baslik = QLabel("Belirti Türü")
+        belirti_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #2c3e50;")
+        belirti_layout.addWidget(belirti_baslik)
+        
+        belirti_turu = QComboBox()
+        belirti_turu.addItems([
+            "Poliüri (Sık idrara çıkma)",
+            "Polifaji (Aşırı açlık hissi)",
+            "Polidipsi (Aşırı susama hissi)",
+            "Nöropati (El ve ayaklarda karıncalanma veya uyuşma hissi)",
+            "Kilo kaybı",
+            "Yorgunluk",
+            "Yaraların yavaş iyileşmesi",
+            "Bulanık görme"
+        ])
+        belirti_turu.setStyleSheet("""
+            QComboBox {
+                border: 1px solid #3498db;
+                border-radius: 5px;
+                padding: 3px;
+                background-color: white;
+                font-size: 12px;
+                min-height: 25px;
+            }
+        """)
+        belirti_layout.addWidget(belirti_turu)
+        
+        # Tarih seçimi
+        tarih_frame = QFrame()
+        tarih_frame.setStyleSheet(Styles.get_inner_card_style())
+        tarih_layout = QVBoxLayout(tarih_frame)
+        
+        tarih_baslik = QLabel("Tarih")
+        tarih_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #2c3e50;")
+        tarih_layout.addWidget(tarih_baslik)
+        
+        tarih = QDateEdit()
+        tarih.setDate(QDate.currentDate())
+        tarih.setCalendarPopup(True)
+        tarih.setStyleSheet("""
+            QDateEdit {
+                border: 1px solid #3498db;
+                border-radius: 5px;
+                padding: 3px;
+                background-color: white;
+                font-size: 12px;
+                min-height: 25px;
+            }
+        """)
+        tarih_layout.addWidget(tarih)
+        
+        buton_layout = QHBoxLayout()  
+        
+        kaydet_btn = QPushButton("Kaydet")
+        kaydet_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #2ecc71;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 13px;
+            }
+        """)
+        
+        kaydet_btn.clicked.connect(lambda: self.belirti_kaydet_dialog(
+            dialog, 
+            self.secili_hasta_id, 
+            tarih.date().toPyDate(),
+            belirti_turu.currentText()
+        ))
+        
+        iptal_btn = QPushButton("İptal")
+        iptal_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 5px 10px;
+                font-size: 13px;
+            }
+        """)
+        iptal_btn.clicked.connect(dialog.reject)
+        
+        buton_layout.addWidget(kaydet_btn)
+        buton_layout.addWidget(iptal_btn)
+        
+        # Kartları ana karta ekle
+        card_layout.addWidget(belirti_frame)
+        card_layout.addWidget(tarih_frame)
+        card_layout.addLayout(buton_layout)  
+        
+        main_layout.addWidget(main_card)
+        
+        dialog.exec_()
+    
+    def belirti_kaydet_dialog(self, dialog, hasta_id, tarih, belirti_turu):
+        try:
+            self.db.add_symptom(
+                hasta_id,
+                tarih,
+                belirti_turu
+            )
+            QMessageBox.information(self, "Başarılı", "Belirti kaydedildi.")
+            dialog.accept()
+            
+            # Belirtileri görüntülemek için sor
+            cevap = QMessageBox.question(
+                self, 
+                "Belirtiler", 
+                "Hastanın tüm belirtilerini görüntülemek ister misiniz?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            
+            if cevap == QMessageBox.Yes:
+                self.belirtileri_goruntule()
+                
+        except Exception as e:
+            QMessageBox.warning(self, "Hata", f"Belirti kaydedilirken bir hata oluştu: {str(e)}")
+            
+    def belirtileri_goruntule(self):
+        if not self.secili_hasta_id:
+            QMessageBox.warning(self, "Uyarı", "Lütfen önce bir hasta seçin.")
+            return
+        
+        belirtiler = self.db.get_patient_symptoms(self.secili_hasta_id)
+        
+        if not belirtiler:
+            QMessageBox.information(self, "Bilgi", "Bu hasta için kaydedilmiş belirti bulunmamaktadır.")
+            return
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Hasta Belirtileri")
+        dialog.setMinimumSize(600, 400)
+        
+        layout = QVBoxLayout()
+        
+        hasta = self.db.get_user_by_id(self.secili_hasta_id)
+        if hasta:
+            baslik = QLabel(f"{hasta[2]} {hasta[3]} - Belirti Geçmişi")
+        else:
+            baslik = QLabel("Belirti Geçmişi")
+        baslik.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(baslik)
+        
+        liste = QListWidget()
+        liste.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                font-size: 14px;
+                padding: 5px;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+        """)
+        
+        for belirti in belirtiler:
+            tarih = belirti[2].strftime("%d.%m.%Y")
+            belirti_turu = belirti[3]
+            
+            item_text = f"{tarih} - {belirti_turu}"
+            liste.addItem(item_text)
+        
+        layout.addWidget(liste)
+        
+        buton_layout = QHBoxLayout()
+        
+        yeni_ekle_btn = QPushButton("Yeni Belirti Ekle")
+        yeni_ekle_btn.setStyleSheet(Styles.get_button_style())
+        yeni_ekle_btn.clicked.connect(lambda: [dialog.close(), self.belirti_ekle()])
+        
+        kapat_btn = QPushButton("Kapat")
+        kapat_btn.setStyleSheet(Styles.get_button_style())
+        kapat_btn.clicked.connect(dialog.close)
+        
+        buton_layout.addWidget(yeni_ekle_btn)
+        buton_layout.addWidget(kapat_btn)
+        
+        layout.addLayout(buton_layout)
+        
+        dialog.setLayout(layout)
+        dialog.exec_()
 
 class HastaEklePenceresi(QWidget): 
     def __init__(self, doktor, db):
