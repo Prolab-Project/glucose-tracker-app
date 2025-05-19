@@ -72,6 +72,7 @@ class HastaListePenceresi(QWidget):
         
         self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
         self.guncelle_btn.setStyleSheet(Styles.get_button_style())
+        self.guncelle_btn.clicked.connect(self.bilgileri_guncelle)
         
         self.olcum_ekle_btn.setEnabled(False)
         self.goruntule_btn.setEnabled(False)
@@ -376,7 +377,8 @@ class HastaListePenceresi(QWidget):
             if not diyetler : 
                 cevap = QMessageBox.question(self, "Bilgi", 
                     f"Bu hasta (ID: {self.secili_hasta_id}) için diyet bilgisi bulunamamıştır.\nYeni diyet eklemek ister misiniz?",
-                    QMessageBox.Yes | QMessageBox.No)
+                    QMessageBox.Yes | QMessageBox.No
+                )
                 
                 if cevap == QMessageBox.Yes:
                     self.diyet_ekle()
@@ -654,7 +656,21 @@ class HastaListePenceresi(QWidget):
             self.insulin_oneri_btn.setEnabled(True)
             self.belirti_ekle_btn.setEnabled(True)
             self.belirti_goruntule_btn.setEnabled(True)
-            
+
+    def bilgileri_guncelle(self) :
+        if not self.secili_hasta_id or not self.secili_hastai : 
+            QMessageBox.warning(self, "Uyarı", "Lütfen bir hasta seçin.")
+            return
+        
+        hasta_bilgileri = self.db.get_user_by_tc (self.secili_hasta_id)
+
+        if not hasta_bilgileri: 
+            QMessageBox.warning(self, "HATA", "Hasta bilgileri alınırken hata oluştu.")
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Hasta Bilgilerini Güncelle")
+        dialog.setMinimumSize(600, 400)
+
 
     def hastalari_getir(self):
         self.hasta_listesi.clear()  
@@ -1531,12 +1547,16 @@ class DoktorPanel(QWidget):
         self.hastaGoruntule.setStyleSheet(Styles.get_button_style())
         self.hastaEkleButton = QPushButton("Yeni Hasta Kaydı", self)
         self.hastaEkleButton.setStyleSheet(Styles.get_button_style())
+        self.uyarilarButton = QPushButton("⚠️ Uyarılar", self)
+        self.uyarilarButton.setStyleSheet(Styles.get_button_style())
         
         self.hastaGoruntule.clicked.connect(self.hasta_listesine_git)
         self.hastaEkleButton.clicked.connect(lambda: self.stacked_widget.setCurrentIndex(1))
+        self.uyarilarButton.clicked.connect(self.uyarilari_goster)
         
         button_layout.addWidget(self.hastaGoruntule)
         button_layout.addWidget(self.hastaEkleButton)
+        button_layout.addWidget(self.uyarilarButton)
 
         self.stacked_widget = QStackedWidget()
         
@@ -1559,3 +1579,95 @@ class DoktorPanel(QWidget):
     def hasta_listesini_yenile(self):
         self.hasta_liste_widget.hastalari_getir()
         self.stacked_widget.setCurrentIndex(0)
+
+    def uyarilari_goster(self):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Hasta Uyarıları")
+        dialog.setMinimumSize(800, 600)
+        
+        layout = QVBoxLayout()
+        
+        baslik = QLabel("⚠️ Hasta Uyarıları")
+        baslik.setStyleSheet("font-size: 24px; font-weight: bold; color: #2c3e50; margin-bottom: 20px;")
+        layout.addWidget(baslik)
+        
+        uyari_listesi = QListWidget()
+        uyari_listesi.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                font-size: 14px;
+                padding: 5px;
+                background-color: white;
+            }
+            QListWidget::item {
+                padding: 10px;
+                border-bottom: 1px solid #eee;
+                color: #2c3e50;
+                background-color: white;
+            }
+            QListWidget::item:selected {
+                background-color: #e8f4f8;
+                color: #2c3e50;
+            }
+            QListWidget::item:hover {
+                background-color: #f5f6fa;
+            }
+        """)
+        
+        hastalar = self.db.get_doctor_patients(self.doktor_id)
+        for hasta in hastalar:
+            hasta_id = hasta[0]
+            hasta_adi = f"{hasta[2]} {hasta[3]}"
+            
+            olcumler = self.db.get_patient_measurements(hasta_id)
+            bugun = datetime.now().date()
+            bugun_olcumler = [o for o in olcumler if o[3].date() == bugun]
+            
+            if not bugun_olcumler:
+                uyari_listesi.addItem(f"🔴 {hasta_adi} - ÖLÇÜM EKSİK !")
+            elif len(bugun_olcumler) < 3:
+                uyari_listesi.addItem(f"🟡 {hasta_adi} - ÖLÇÜM YETERSİZ !{len(bugun_olcumler)} ")
+            
+            for olcum in bugun_olcumler:
+                deger = olcum[4]
+                if deger < 70:
+                    uyari_listesi.addItem(f"🔴 {hasta_adi} - ÇOK DÜŞÜK KAN ŞEKERİ DEĞERİ {deger} mg/dL")
+                elif deger > 200:
+                    uyari_listesi.addItem(f"🔴 {hasta_adi} - ÇOK YÜKSEK KAN ŞEKERİ DEĞERİ {deger} mg/dL")
+        
+        layout.addWidget(uyari_listesi)
+        
+        buton_layout = QHBoxLayout()
+        
+        temizle_btn = QPushButton("Uyarıları Temizle")
+        temizle_btn.setStyleSheet(Styles.get_button_style())
+        temizle_btn.clicked.connect(lambda: self.uyarilari_temizle(dialog))
+        
+        kapat_btn = QPushButton("Kapat")
+        kapat_btn.setStyleSheet(Styles.get_button_style())
+        kapat_btn.clicked.connect(dialog.close)
+        
+        buton_layout.addWidget(temizle_btn)
+        buton_layout.addWidget(kapat_btn)
+        
+        layout.addLayout(buton_layout)
+        
+        dialog.setLayout(layout)
+        dialog.exec_()
+    
+    def uyarilari_temizle(self, dialog):
+        cevap = QMessageBox.question(
+            self,
+            "Uyarıları Temizle",
+            "Tüm uyarıları temizlemek istediğinizden emin misiniz?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if cevap == QMessageBox.Yes:
+            try:
+                self.db.clear_doctor_alerts(self.doktor_id)
+                QMessageBox.information(self, "Başarılı", "Tüm uyarılar temizlendi.")
+                dialog.close()
+            except Exception as e:
+                QMessageBox.warning(self, "Hata", f"Uyarılar temizlenirken bir hata oluştu: {str(e)}")
