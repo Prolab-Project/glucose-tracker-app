@@ -256,3 +256,34 @@ class DatabaseManager:
         except Exception as e:
             print(f"İnsülin sorgu hatası: {str(e)}")
             return None 
+        
+    def add_alert(self, hasta_id, doktor_id , baslik , mesaj , tip , tarih)    : 
+        try : 
+            cursor= self.conn.cursor()
+            cursor.execute(
+                """
+                INSERT INTO uyarilar (hasta_id , doktor_id , baslik , mesaj , tip, tarih)
+                VALUES(%s,%s,%s,%s,%s,%s)
+                """,
+            )
+            self.conn.commit()
+        except Exception as e:
+            print(f"Uyarı kayıt hatası: {str(e)}")
+            raise e
+        
+    def get_doctor_alerts (self, doktor_id) : 
+        try : 
+            cursor = self.conn.cursor()
+            cursor.execute(
+                """
+                SELECT * FROM uyarilar WHERE doktor_id = %s
+                ORDER BY tarih DESC
+                """,
+                (doktor_id,)
+            )
+            return cursor.fetchall()
+        except Exception as e:
+            print(f"Uyarı sorgu hatası: {str(e)}")
+            return []
+        
+            
