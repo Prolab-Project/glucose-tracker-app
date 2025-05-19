@@ -1581,6 +1581,56 @@ class DoktorPanel(QWidget):
         self.stacked_widget.setCurrentIndex(0)
 
     def uyarilari_goster(self):
+        hastalar = self.db.get_doctor_patients(self.doktor_id)
+        bugun = datetime.now().date()
+        
+        for hasta in hastalar:
+            hasta_id = hasta[0]
+            hasta_adi = f"{hasta[2]} {hasta[3]}"
+            
+            olcumler = self.db.get_patient_measurements(hasta_id)
+            bugun_olcumler = [o for o in olcumler if o[3].date() == bugun]
+            
+            if not bugun_olcumler:
+                self.db.add_alert(
+                    hasta_id=hasta_id,
+                    uyari_turu="Acil Uyarı !",
+                    mesaj=f"{hasta_adi} Hasta gün boyunca kan şekeri ölçümü yapmamıştır. Acil takip önerilir. "
+                )
+            elif len(bugun_olcumler) < 3:
+                self.db.add_alert(
+                    hasta_id=hasta_id,
+                    uyari_turu="Yetersiz Ölçüm",
+                    mesaj=f"{hasta_adi} için Hastanın günlük kan şekeri ölçüm sayısı yetersiz (<3). Durum izlenmelidir. "
+                )
+            
+            for olcum in bugun_olcumler:
+                deger = olcum[4]
+                if deger < 70:
+                    self.db.add_alert(
+                        hasta_id=hasta_id,
+                        uyari_turu="Acil Uyarı !",
+                        mesaj=f"{hasta_adi} için Hastanın kan şekeri seviyesi 70 mg/dL'nin altına düştü. Hipoglisemi riski! Hızlı müdahale gerekebilir. "
+                    )
+                elif deger > 200:
+                    self.db.add_alert(
+                        hasta_id=hasta_id,
+                        uyari_turu="Acil Müdahale Uyarısı",
+                        mesaj=f"{hasta_adi} içinHastanın kan şekeri 200 mg/dL'nin üzerinde. Hiperglisemi durumu. Acil müdahale gerekebilir. "
+                    )
+                elif deger > 111 and deger <= 150 : 
+                    self.db.add_alert(
+                        hasta_id = hasta_id,
+                        uyari_turu = "Takip Uyarısı" ,
+                        mesaj = f"{hasta_adi} Hastanın kan şekeri 111-150 mg/dL arasında. Durum izlenmeli. "
+                    )
+                elif deger > 150 and deger <= 200 : 
+                    self.db.add_alert(
+                        hasta_id = hasta_id,
+                        uyari_turu = "İzleme Uyarısı" ,
+                        mesaj = f"{hasta_adi} Hastanın kan şekeri 151-200 mg/dL arasında. Durum izlenmeli. "
+                    )
+
         dialog = QDialog(self)
         dialog.setWindowTitle("Hasta Uyarıları")
         dialog.setMinimumSize(800, 600)
@@ -1615,26 +1665,27 @@ class DoktorPanel(QWidget):
             }
         """)
         
-        hastalar = self.db.get_doctor_patients(self.doktor_id)
-        for hasta in hastalar:
-            hasta_id = hasta[0]
-            hasta_adi = f"{hasta[2]} {hasta[3]}"
-            
-            olcumler = self.db.get_patient_measurements(hasta_id)
-            bugun = datetime.now().date()
-            bugun_olcumler = [o for o in olcumler if o[3].date() == bugun]
-            
-            if not bugun_olcumler:
-                uyari_listesi.addItem(f"🔴 {hasta_adi} - ÖLÇÜM EKSİK !")
-            elif len(bugun_olcumler) < 3:
-                uyari_listesi.addItem(f"🟡 {hasta_adi} - ÖLÇÜM YETERSİZ !{len(bugun_olcumler)} ")
-            
-            for olcum in bugun_olcumler:
-                deger = olcum[4]
-                if deger < 70:
-                    uyari_listesi.addItem(f"🔴 {hasta_adi} - ÇOK DÜŞÜK KAN ŞEKERİ DEĞERİ {deger} mg/dL")
-                elif deger > 200:
-                    uyari_listesi.addItem(f"🔴 {hasta_adi} - ÇOK YÜKSEK KAN ŞEKERİ DEĞERİ {deger} mg/dL")
+        uyarilar = self.db.get_doctor_alerts(self.doktor_id)
+        
+        if not uyarilar:
+            uyari_listesi.addItem("Henüz hiç uyarı bulunmamaktadır.")
+        else:
+            for uyari in uyarilar:
+                hasta_adi = f"{uyari[5]} {uyari[6]}"  # kullanici tablosundan gelen ad ve soyad
+                tarih = uyari[2].strftime("%d.%m.%Y %H:%M")
+                uyari_turu = uyari[3]
+                mesaj = uyari[4]
+                
+                emoji = "⚠️"
+                if "Kritik" in uyari_turu:
+                    emoji = "🔴"
+                elif "Yetersiz" in uyari_turu:
+                    emoji = "🟡"
+                elif "Eksik" in uyari_turu:
+                    emoji = "🟠"
+                
+                item_text = f"{emoji} {tarih} - {hasta_adi}\n{uyari_turu}\n📝 {mesaj}"
+                uyari_listesi.addItem(item_text)
         
         layout.addWidget(uyari_listesi)
         
@@ -1666,7 +1717,9 @@ class DoktorPanel(QWidget):
         
         if cevap == QMessageBox.Yes:
             try:
-                self.db.clear_doctor_alerts(self.doktor_id)
+                hastalar = self.db.get_doctor_patients(self.doktor_id)
+                for hasta in hastalar:
+                    self.db.clear_patient_alerts(hasta[0])
                 QMessageBox.information(self, "Başarılı", "Tüm uyarılar temizlendi.")
                 dialog.close()
             except Exception as e:

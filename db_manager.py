@@ -257,33 +257,50 @@ class DatabaseManager:
             print(f"İnsülin sorgu hatası: {str(e)}")
             return None 
         
-    def add_alert(self, hasta_id, doktor_id , baslik , mesaj , tip , tarih)    : 
-        try : 
-            cursor= self.conn.cursor()
-            cursor.execute(
+    def add_alert(self, hasta_id, uyari_turu, mesaj):
+        try:
+            self.cursor.execute(
                 """
-                INSERT INTO uyarilar (hasta_id , tarih_saat , uyari_turu , mesaj)
-                VALUES(%s,%s,%s,%s,%s,%s)
+                INSERT INTO uyari (hasta_id, tarih_saat, uyari_turu, mesaj)
+                VALUES (%s, %s, %s, %s)
                 """,
+                (hasta_id, datetime.now(), uyari_turu, mesaj)
             )
             self.conn.commit()
         except Exception as e:
             print(f"Uyarı kayıt hatası: {str(e)}")
             raise e
         
-    def get_doctor_alerts (self, doktor_id) : 
-        try : 
-            cursor = self.conn.cursor()
-            cursor.execute(
+    def get_doctor_alerts(self, doktor_id):
+        try:
+            self.cursor.execute(
                 """
-                SELECT * FROM uyarilar WHERE doktor_id = %s
-                ORDER BY tarih DESC
+                SELECT u.*, k.ad, k.soyad 
+                FROM uyari u
+                INNER JOIN kullanici k ON u.hasta_id = k.id
+                INNER JOIN hasta_doktor hd ON k.id = hd.hasta_id
+                WHERE hd.doktor_id = %s
+                ORDER BY u.tarih_saat DESC
                 """,
                 (doktor_id,)
             )
-            return cursor.fetchall()
+            return self.cursor.fetchall()
         except Exception as e:
             print(f"Uyarı sorgu hatası: {str(e)}")
             return []
+        
+    def clear_patient_alerts(self, hasta_id):
+        try:
+            self.cursor.execute(
+                """
+                DELETE FROM uyari 
+                WHERE hasta_id = %s
+                """,
+                (hasta_id,)
+            )
+            self.conn.commit()
+        except Exception as e:
+            print(f"Uyarı temizleme hatası: {str(e)}")
+            raise e
         
             

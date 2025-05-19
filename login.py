@@ -136,7 +136,7 @@ class LoginWindow(QWidget):
         return """
         QLineEdit {
             padding: 15px;
-            border: 2px solid #34495e;
+            border: 2px solid #34495e;val
             border-radius: 10px;
             font-size: 16px;
             background-color: #34495e;
