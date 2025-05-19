@@ -262,7 +262,7 @@ class DatabaseManager:
             cursor= self.conn.cursor()
             cursor.execute(
                 """
-                INSERT INTO uyarilar (hasta_id , doktor_id , baslik , mesaj , tip, tarih)
+                INSERT INTO uyarilar (hasta_id , tarih_saat , uyari_turu , mesaj)
                 VALUES(%s,%s,%s,%s,%s,%s)
                 """,
             )
