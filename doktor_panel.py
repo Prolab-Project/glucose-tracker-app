@@ -70,6 +70,10 @@ class HastaListePenceresi(QWidget):
         self.belirti_goruntule_btn.setStyleSheet(Styles.get_button_style())
         self.belirti_goruntule_btn.clicked.connect(self.belirtileri_goruntule)
         
+        self.diyet_egzersiz_btn = QPushButton("🔄 Diyet & Egzersiz Öneri")
+        self.diyet_egzersiz_btn.setStyleSheet(Styles.get_button_style())
+        self.diyet_egzersiz_btn.clicked.connect(self.diyet_egzersiz_oneri_goster)
+        
         self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
         self.guncelle_btn.setStyleSheet(Styles.get_button_style())
         self.guncelle_btn.clicked.connect(self.bilgileri_guncelle)
@@ -81,6 +85,7 @@ class HastaListePenceresi(QWidget):
         self.insulin_oneri_btn.setEnabled(False)
         self.belirti_ekle_btn.setEnabled(False)
         self.belirti_goruntule_btn.setEnabled(False)
+        self.diyet_egzersiz_btn.setEnabled(False)
         
         self.detay_layout.addWidget(self.olcum_ekle_btn)
         self.detay_layout.addWidget(self.goruntule_btn)
@@ -88,6 +93,7 @@ class HastaListePenceresi(QWidget):
         self.detay_layout.addWidget(self.insulin_oneri_btn)
         self.detay_layout.addWidget(self.belirti_ekle_btn)
         self.detay_layout.addWidget(self.belirti_goruntule_btn)
+        self.detay_layout.addWidget(self.diyet_egzersiz_btn)
         self.detay_layout.addWidget(self.guncelle_btn)
 
         baslik_label = QLabel("🩺 Hastalarım")
@@ -656,6 +662,7 @@ class HastaListePenceresi(QWidget):
             self.insulin_oneri_btn.setEnabled(True)
             self.belirti_ekle_btn.setEnabled(True)
             self.belirti_goruntule_btn.setEnabled(True)
+            self.diyet_egzersiz_btn.setEnabled(True)
 
     def bilgileri_guncelle(self) :
         if not self.secili_hasta_id or not self.secili_hastai : 
@@ -1245,6 +1252,203 @@ class HastaListePenceresi(QWidget):
         
         dialog.setLayout(layout)
         dialog.exec_()
+
+    def diyet_egzersiz_oneri_goster(self):
+        if not self.secili_hasta_id or not self.secili_hasta:
+            QMessageBox.warning(self, "Uyarı", "Lütfen önce bir hasta seçin.")
+            return
+            
+        try:
+            # Son ölçüm bilgisini al
+            olcumler = self.db.get_patient_measurements(self.secili_hasta_id)
+            if not olcumler:
+                QMessageBox.warning(self, "Uyarı", "Bu hasta için ölçüm kaydı bulunamadı!")
+                return
+                
+            son_olcum = olcumler[0]
+            son_kan_sekeri = son_olcum[4]  # kan_seker_degeri
+            olcum_tarihi = son_olcum[3].date()
+            
+            # En son belirtileri al
+            belirtiler = self.db.get_patient_symptoms(self.secili_hasta_id)
+            belirti_adlari = []
+            
+            if belirtiler:
+                for belirti in belirtiler:
+                    belirti_adlari.append(belirti[3])  # belirti_turu
+            
+            diyet, egzersiz = self.diyet_egzersiz_oneri(son_kan_sekeri, belirti_adlari)
+            
+            dialog = QDialog(self)
+            dialog.setWindowTitle("Diyet & Egzersiz Önerisi")
+            dialog.setMinimumSize(600, 500)
+            
+            main_layout = QVBoxLayout()
+            
+            main_card = QFrame()
+            main_card.setStyleSheet(Styles.get_modern_card_style())
+            card_layout = QVBoxLayout(main_card)
+            
+            baslik = QLabel("🍽️ 🏋️ Diyet & Egzersiz Önerisi")
+            baslik.setStyleSheet("font-size: 20px; font-weight: bold; color: #2c3e50;")
+            card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+            
+            hasta_bilgisi = QLabel(f"Hasta: {self.secili_hasta['ad']} {self.secili_hasta['soyad']}")
+            hasta_bilgisi.setStyleSheet("font-size: 16px; color: #3498db;")
+            card_layout.addWidget(hasta_bilgisi, alignment=Qt.AlignCenter)
+            
+            olcum_bilgisi = QLabel(f"Son Ölçüm: {son_kan_sekeri} mg/dL ({olcum_tarihi.strftime('%d.%m.%Y')})")
+            olcum_bilgisi.setStyleSheet("font-size: 14px; color: #7f8c8d;")
+            card_layout.addWidget(olcum_bilgisi, alignment=Qt.AlignCenter)
+            
+            durum = "Hipoglisemi"
+            renk = "#e74c3c"  # kırmızı
+            if 70 <= son_kan_sekeri <= 110:
+                durum = "Normal - Alt Düzey"
+                renk = "#2ecc71"  # yeşil
+            elif 110 < son_kan_sekeri < 180:
+                durum = "Normal - Üst Düzey / Hafif Yüksek"
+                renk = "#f39c12"  # turuncu
+            elif son_kan_sekeri >= 180:
+                durum = "Hiperglisemi"
+                renk = "#e74c3c"  # kırmızı
+                
+            durum_bilgisi = QLabel(f"Durum: {durum}")
+            durum_bilgisi.setStyleSheet(f"font-size: 16px; font-weight: bold; color: {renk};")
+            card_layout.addWidget(durum_bilgisi, alignment=Qt.AlignCenter)
+            
+            if belirti_adlari:
+                belirti_frame = QFrame()
+                belirti_frame.setStyleSheet(Styles.get_inner_card_style())
+                belirti_layout = QVBoxLayout(belirti_frame)
+                
+                belirti_baslik = QLabel("⚠️ Kaydedilmiş Belirtiler:")
+                belirti_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #2c3e50;")
+                belirti_layout.addWidget(belirti_baslik)
+                
+                for belirti in belirti_adlari:
+                    belirti_label = QLabel(f"• {belirti}")
+                    belirti_label.setStyleSheet("font-size: 13px; color: #2c3e50;")
+                    belirti_layout.addWidget(belirti_label)
+                
+                card_layout.addWidget(belirti_frame)
+            else:
+                belirti_bilgi = QLabel("Kaydedilmiş belirti bulunmamaktadır.")
+                belirti_bilgi.setStyleSheet("font-style: italic; color: #7f8c8d;")
+                card_layout.addWidget(belirti_bilgi)
+            
+            oneri_frame = QFrame()
+            oneri_frame.setStyleSheet(Styles.get_inner_card_style())
+            oneri_layout = QVBoxLayout(oneri_frame)
+            
+            oneri_baslik = QLabel("📋 Öneriler")
+            oneri_baslik.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+            oneri_layout.addWidget(oneri_baslik)
+            
+            diyet_baslik = QLabel("🍽️ Diyet Önerisi:")
+            diyet_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #27ae60;")
+            oneri_layout.addWidget(diyet_baslik)
+            
+            diyet_label = QLabel(diyet)
+            diyet_label.setStyleSheet("font-size: 14px; color: #2c3e50; margin-left: 10px;")
+            oneri_layout.addWidget(diyet_label)
+            
+            egzersiz_baslik = QLabel("🏋️ Egzersiz Önerisi:")
+            egzersiz_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #2980b9;")
+            oneri_layout.addWidget(egzersiz_baslik)
+            
+            egzersiz_label = QLabel(egzersiz)
+            egzersiz_label.setStyleSheet("font-size: 14px; color: #2c3e50; margin-left: 10px;")
+            oneri_layout.addWidget(egzersiz_label)
+            
+            card_layout.addWidget(oneri_frame)
+            
+            bilgi_frame = QFrame()
+            bilgi_frame.setStyleSheet("background-color: #d4edda; border-radius: 8px; padding: 10px; border: 1px solid #c3e6cb;")
+            bilgi_layout = QVBoxLayout(bilgi_frame)
+            
+            bilgi_baslik = QLabel("ℹ️ Bilgi")
+            bilgi_baslik.setStyleSheet("font-size: 14px; font-weight: bold; color: #155724;")
+            bilgi_layout.addWidget(bilgi_baslik)
+            
+            bilgi_icerik = QLabel(
+                "Bu öneriler hastanın son ölçüm değerine ve kaydedilen belirtilere göre otomatik olarak oluşturulmuştur. "
+                "Tedavi planı için doktor görüşü esastır."
+            )
+            bilgi_icerik.setStyleSheet("color: #155724; font-size: 13px;")
+            bilgi_icerik.setWordWrap(True)
+            bilgi_layout.addWidget(bilgi_icerik)
+            
+            card_layout.addWidget(bilgi_frame)
+            
+            buton_layout = QHBoxLayout()
+            
+            diyet_ekle_btn = QPushButton("Diyet Kaydı Ekle")
+            diyet_ekle_btn.setStyleSheet(Styles.get_button_style())
+            diyet_ekle_btn.clicked.connect(lambda: [dialog.close(), self.diyet_ekle()])
+            
+            kapat_btn = QPushButton("Kapat")
+            kapat_btn.setStyleSheet(Styles.get_button_style())
+            kapat_btn.clicked.connect(dialog.close)
+            
+            buton_layout.addWidget(diyet_ekle_btn)
+            buton_layout.addWidget(kapat_btn)
+            
+            card_layout.addLayout(buton_layout)
+            
+            main_layout.addWidget(main_card)
+            dialog.setLayout(main_layout)
+            dialog.exec_()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Diyet ve egzersiz önerisi oluşturulurken bir hata oluştu:\n{str(e)}")
+            
+    def diyet_egzersiz_oneri(self, kan_sekeri, belirtiler):
+        """
+        Kan şekeri seviyesi ve belirtilere göre diyet ve egzersiz önerisi verir.
+        Tablodaki kurallara göre otomatik öneri üretir.
+        
+        Args:
+            kan_sekeri: int, hastanın kan şekeri seviyesi (mg/dL)
+            belirtiler: list of str, kaydedilmiş hasta belirtileri
+            
+        Returns:
+            tuple: (diyet_onerisi, egzersiz_onerisi)
+        """
+        # Belirtiler listesini küçük harfe dönüştür
+        belirtiler_lower = [b.lower() if b else "" for b in belirtiler]
+        
+        # < 70 mg/dL (Hipoglisemi)
+        if kan_sekeri < 70:
+            if any(belirti in b.lower() for b in belirtiler_lower for belirti in ["nöropati", "polifaj", "yorgunluk"]):
+                return "Dengeli Beslenme", "Yok"
+            return "Dengeli Beslenme", "Yok"  # Varsayılan hipoglisemi önerisi
+            
+        # 70-110 mg/dL (Normal - Alt Düzey)
+        elif 70 <= kan_sekeri <= 110:
+            if any(belirti in b.lower() for b in belirtiler_lower for belirti in ["yorgun", "kilo kayb"]):
+                return "Az Şekerli Diyet", "Yürüyüş"
+            elif any(belirti in b.lower() for b in belirtiler_lower for belirti in ["polifaj", "polidipsi"]):
+                return "Dengeli Beslenme", "Yürüyüş"
+            return "Dengeli Beslenme", "Yürüyüş"  # Varsayılan normal alt düzey önerisi
+            
+        # 110-180 mg/dL (Normal - Üst Düzey / Hafif Yüksek)
+        elif 110 < kan_sekeri < 180:
+            if any(belirti in b.lower() for b in belirtiler_lower for belirti in ["bulanık görme", "nöropati"]):
+                return "Az Şekerli Diyet", "Klinik Egzersiz"
+            elif any(belirti in b.lower() for b in belirtiler_lower for belirti in ["poliüri", "polidipsi"]):
+                return "Şekersiz Diyet", "Klinik Egzersiz"
+            elif any(belirti in b.lower() for b in belirtiler_lower for belirti in ["yorgun", "nöropati", "bulanık"]):
+                return "Az Şekerli Diyet", "Yürüyüş"
+            return "Az Şekerli Diyet", "Yürüyüş"  # Varsayılan normal üst düzey önerisi
+            
+        # >= 180 mg/dL (Hiperglisemi)
+        else:  # kan_sekeri >= 180
+            if any(belirti in b.lower() for b in belirtiler_lower for belirti in ["yara", "yavaş", "iyileşme", "polifaj", "polidipsi"]):
+                return "Şekersiz Diyet", "Klinik Egzersiz"
+            elif any(belirti in b.lower() for b in belirtiler_lower for belirti in ["yara", "yavaş", "iyileşme", "kilo kayb"]):
+                return "Şekersiz Diyet", "Yürüyüş"
+            return "Şekersiz Diyet", "Yürüyüş"  # Varsayılan hiperglisemi önerisi
 
 class HastaEklePenceresi(QWidget): 
     def __init__(self, doktor, db):
