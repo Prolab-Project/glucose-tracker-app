@@ -240,37 +240,121 @@ class EgzersizTakipPenceresi(QWidget):
         self.db = db
         self.dashboard = dashboard
         
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+        
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f0f0f0;
+                width: 10px;
+                margin: 0px 0px 0px 0px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: #3498db;
+                min-height: 30px;
+                border-radius: 5px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+        """)
+        
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(20, 20, 20, 20)
+        content_layout.setSpacing(15)
+        
+        main_card = QFrame()
+        main_card.setStyleSheet(Styles.get_modern_card_style())
+        card_layout = QVBoxLayout(main_card)
+        card_layout.setContentsMargins(25, 25, 25, 25)
+        card_layout.setSpacing(20)
         
         baslik = QLabel("🏃 Egzersiz Takibi")
-        baslik.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        baslik.setStyleSheet(Styles.get_title_style())
+        card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        
+        # Bilgi
+        bilgi_label = QLabel("Düzenli egzersiz, kan şekeri seviyenizi kontrol etmenize yardımcı olur.")
+        bilgi_label.setStyleSheet("font-size: 14px; color: #7f8c8d; margin-bottom: 15px;")
+        bilgi_label.setWordWrap(True)
+        card_layout.addWidget(bilgi_label)
+        
+        tur_frame = QFrame()
+        tur_frame.setStyleSheet(Styles.get_inner_card_style())
+        tur_layout = QVBoxLayout(tur_frame)
+        
+        tur_baslik = QLabel("🚲 Egzersiz Türü")
+        tur_baslik.setStyleSheet(Styles.get_subtitle_style())
+        tur_layout.addWidget(tur_baslik)
         
         self.egzersiz_turu = QComboBox()
-        self.egzersiz_turu.addItems(["Yürüyüş", "Bisiklet", "Klinik Egzersiz"])
-        self.egzersiz_turu.setStyleSheet(Styles.get_input_style())
+        self.egzersiz_turu.addItems(["Yürüyüş", "Bisiklet", "Koşu", "Yüzme", "Pilates", "Yoga", "Klinik Egzersiz", "Diğer"])
+        self.egzersiz_turu.setStyleSheet(Styles.get_modern_combobox_style())
+        tur_layout.addWidget(self.egzersiz_turu)
+        
+        tarih_frame = QFrame()
+        tarih_frame.setStyleSheet(Styles.get_inner_card_style())
+        tarih_layout = QVBoxLayout(tarih_frame)
+        
+        tarih_baslik = QLabel("📅 Tarih")
+        tarih_baslik.setStyleSheet(Styles.get_subtitle_style())
+        tarih_layout.addWidget(tarih_baslik)
         
         self.tarih = QDateEdit()
         self.tarih.setDate(QDate.currentDate())
-        self.tarih.setStyleSheet(Styles.get_input_style())
+        self.tarih.setCalendarPopup(True)
+        self.tarih.setStyleSheet(Styles.get_modern_dateedit_style())
+        tarih_layout.addWidget(self.tarih)
+        
+        durum_frame = QFrame()
+        durum_frame.setStyleSheet(Styles.get_inner_card_style())
+        durum_layout = QVBoxLayout(durum_frame)
+        
+        durum_baslik = QLabel("✅ Durum")
+        durum_baslik.setStyleSheet(Styles.get_subtitle_style())
+        durum_layout.addWidget(durum_baslik)
         
         self.durum = QComboBox()
         self.durum.addItems(["Yapıldı", "Yapılmadı"])
-        self.durum.setStyleSheet(Styles.get_input_style())
+        self.durum.setStyleSheet(Styles.get_modern_combobox_style())
+        durum_layout.addWidget(self.durum)
         
-        self.kaydet_btn = QPushButton("Egzersiz Durumunu Kaydet")
-        self.kaydet_btn.setStyleSheet(Styles.get_button_style())
+        kaydet_frame = QFrame()
+        kaydet_frame.setStyleSheet(Styles.get_inner_card_style())
+        kaydet_layout = QVBoxLayout(kaydet_frame)
+        
+        kaydet_bilgi = QLabel("Egzersiz kaydınızı oluşturun ve sağlıklı kalın!")
+        kaydet_bilgi.setStyleSheet("font-size: 13px; color: #7f8c8d; font-style: italic; margin-bottom: 10px;")
+        kaydet_layout.addWidget(kaydet_bilgi)
+        
+        self.kaydet_btn = QPushButton("💾 Egzersiz Durumunu Kaydet")
+        self.kaydet_btn.setStyleSheet(Styles.get_success_button_style())
         self.kaydet_btn.clicked.connect(self.egzersiz_kaydet)
+        kaydet_layout.addWidget(self.kaydet_btn)
         
-        layout.addWidget(baslik)
-        layout.addWidget(QLabel("Egzersiz Türü:"))
-        layout.addWidget(self.egzersiz_turu)
-        layout.addWidget(QLabel("Tarih:"))
-        layout.addWidget(self.tarih)
-        layout.addWidget(QLabel("Durum:"))
-        layout.addWidget(self.durum)
-        layout.addWidget(self.kaydet_btn)
+        card_layout.addWidget(tur_frame)
+        card_layout.addWidget(tarih_frame)
+        card_layout.addWidget(durum_frame)
+        card_layout.addWidget(kaydet_frame)
         
-        self.setLayout(layout)
+        content_layout.addWidget(main_card)
+        
+        scroll_area.setWidget(content_widget)
+        
+        main_layout.addWidget(scroll_area)
     
     def egzersiz_kaydet(self):
         try:
