@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget, QDateEdit, QTimeEdit, QSpinBox, QProgressBar, QFrame
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget, QDateEdit, QTimeEdit, QSpinBox, QProgressBar, QFrame, QScrollArea
 from PyQt5.QtGui import QRegularExpressionValidator, QPixmap
 from PyQt5.QtCore import QRegularExpression, Qt, QDate, QTime
 from datetime import datetime, timedelta
@@ -15,21 +15,55 @@ class BilgilerimPenceresi(QWidget):
         self.hasta = hasta
         self.db = db
         
-        self.layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+        
+        # Scroll Area oluştur
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f0f0f0;
+                width: 10px;
+                margin: 0px 0px 0px 0px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: #3498db;
+                min-height: 30px;
+                border-radius: 5px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+        """)
+        
+        # İçerik için konteyner widget oluştur
+        content_widget = QWidget()
+        self.layout = QVBoxLayout(content_widget)
         self.layout.setContentsMargins(20, 20, 20, 20)
         self.layout.setSpacing(15)
         
         # Ana kart frame
         self.main_frame = QFrame()
         self.main_frame.setStyleSheet(Styles.get_modern_card_style())
-        main_layout = QVBoxLayout(self.main_frame)
-        main_layout.setContentsMargins(25, 25, 25, 25)
-        main_layout.setSpacing(15)
+        main_layout_frame = QVBoxLayout(self.main_frame)
+        main_layout_frame.setContentsMargins(25, 25, 25, 25)
+        main_layout_frame.setSpacing(15)
         
         # Başlık
         baslik = QLabel("👤 Kişisel Bilgilerim")
         baslik.setStyleSheet(Styles.get_title_style())
-        main_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        main_layout_frame.addWidget(baslik, alignment=Qt.AlignCenter)
         
         # Profil bölümü
         profil_frame = QFrame()
@@ -96,12 +130,16 @@ class BilgilerimPenceresi(QWidget):
         sifre_layout.addWidget(self.sifre_degistir_btn)
         
         # Ana düzene ekle
-        main_layout.addWidget(profil_frame)
-        main_layout.addWidget(bilgi_frame)
-        main_layout.addWidget(self.sifre_frame)
+        main_layout_frame.addWidget(profil_frame)
+        main_layout_frame.addWidget(bilgi_frame)
+        main_layout_frame.addWidget(self.sifre_frame)
         
         self.layout.addWidget(self.main_frame)
-        self.setLayout(self.layout)
+        
+        scroll_area.setWidget(content_widget)
+        
+        main_layout.addWidget(scroll_area)
+        
         self.bilgileri_goster()
         
     def bilgileri_goster(self):
@@ -360,9 +398,42 @@ class KanSekeriOlcumPenceresi(QWidget):
         self.db = db
         self.dashboard = dashboard
         
-        main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(20, 20, 20, 20)
-        main_layout.setSpacing(15)
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+        
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f0f0f0;
+                width: 10px;
+                margin: 0px 0px 0px 0px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: #3498db;
+                min-height: 30px;
+                border-radius: 5px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+        """)
+        
+        # İçerik widget'ı oluştur
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(20, 20, 20, 20)
+        content_layout.setSpacing(15)
         
         # Ana kart frame
         self.main_card = QFrame()
@@ -469,8 +540,11 @@ class KanSekeriOlcumPenceresi(QWidget):
         card_layout.addWidget(zaman_frame)
         card_layout.addWidget(buton_frame)
         
-        main_layout.addWidget(self.main_card)
-        self.setLayout(main_layout)
+        content_layout.addWidget(self.main_card)
+        
+        scroll_area.setWidget(content_widget)
+        
+        main_layout.addWidget(scroll_area)
     
     def olcum_kaydet(self):
         try:
