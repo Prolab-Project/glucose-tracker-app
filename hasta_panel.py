@@ -286,7 +286,6 @@ class EgzersizTakipPenceresi(QWidget):
         baslik.setStyleSheet(Styles.get_title_style())
         card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
         
-        # Bilgi
         bilgi_label = QLabel("Düzenli egzersiz, kan şekeri seviyenizi kontrol etmenize yardımcı olur.")
         bilgi_label.setStyleSheet("font-size: 14px; color: #7f8c8d; margin-bottom: 15px;")
         bilgi_label.setWordWrap(True)
@@ -377,37 +376,120 @@ class DiyetTakipPenceresi(QWidget):
         self.db = db
         self.dashboard = dashboard
         
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+        
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f0f0f0;
+                width: 10px;
+                margin: 0px 0px 0px 0px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: #3498db;
+                min-height: 30px;
+                border-radius: 5px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+        """)
+        
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(20, 20, 20, 20)
+        content_layout.setSpacing(15)
+        
+        main_card = QFrame()
+        main_card.setStyleSheet(Styles.get_modern_card_style())
+        card_layout = QVBoxLayout(main_card)
+        card_layout.setContentsMargins(25, 25, 25, 25)
+        card_layout.setSpacing(20)
         
         baslik = QLabel("🍽️ Diyet Takibi")
-        baslik.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        baslik.setStyleSheet(Styles.get_title_style())
+        card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        
+        bilgi_label = QLabel("Doğru beslenme, kan şekeri kontrolünde en önemli adımlardan biridir.")
+        bilgi_label.setStyleSheet("font-size: 14px; color: #7f8c8d; margin-bottom: 15px;")
+        bilgi_label.setWordWrap(True)
+        card_layout.addWidget(bilgi_label)
+        
+        diyet_frame = QFrame()
+        diyet_frame.setStyleSheet(Styles.get_inner_card_style())
+        diyet_layout = QVBoxLayout(diyet_frame)
+        
+        diyet_baslik = QLabel("🥗 Diyet Türü")
+        diyet_baslik.setStyleSheet(Styles.get_subtitle_style())
+        diyet_layout.addWidget(diyet_baslik)
         
         self.diyet_turu = QComboBox()
-        self.diyet_turu.addItems(["Az Şekerli Diyet", "Şekersiz Diyet", "Dengeli Beslenme"])
-        self.diyet_turu.setStyleSheet(Styles.get_input_style())
+        self.diyet_turu.addItems(["Az Şekerli Diyet", "Şekersiz Diyet", "Düşük Karbonhidratlı Diyet", "Akdeniz Diyeti", "Dengeli Beslenme", "Ketojenik Diyet"])
+        self.diyet_turu.setStyleSheet(Styles.get_modern_combobox_style())
+        diyet_layout.addWidget(self.diyet_turu)
+        
+        tarih_frame = QFrame()
+        tarih_frame.setStyleSheet(Styles.get_inner_card_style())
+        tarih_layout = QVBoxLayout(tarih_frame)
+        
+        tarih_baslik = QLabel("📅 Tarih")
+        tarih_baslik.setStyleSheet(Styles.get_subtitle_style())
+        tarih_layout.addWidget(tarih_baslik)
         
         self.tarih = QDateEdit()
         self.tarih.setDate(QDate.currentDate())
-        self.tarih.setStyleSheet(Styles.get_input_style())
+        self.tarih.setCalendarPopup(True)
+        self.tarih.setStyleSheet(Styles.get_modern_dateedit_style())
+        tarih_layout.addWidget(self.tarih)
+        
+        durum_frame = QFrame()
+        durum_frame.setStyleSheet(Styles.get_inner_card_style())
+        durum_layout = QVBoxLayout(durum_frame)
+        
+        durum_baslik = QLabel("✅ Durum")
+        durum_baslik.setStyleSheet(Styles.get_subtitle_style())
+        durum_layout.addWidget(durum_baslik)
         
         self.durum = QComboBox()
         self.durum.addItems(["Uygulandı", "Uygulanmadı"])
-        self.durum.setStyleSheet(Styles.get_input_style())
+        self.durum.setStyleSheet(Styles.get_modern_combobox_style())
+        durum_layout.addWidget(self.durum)
         
-        self.kaydet_btn = QPushButton("Diyet Durumunu Kaydet")
-        self.kaydet_btn.setStyleSheet(Styles.get_button_style())
+        kaydet_frame = QFrame()
+        kaydet_frame.setStyleSheet(Styles.get_inner_card_style())
+        kaydet_layout = QVBoxLayout(kaydet_frame)
+        
+        kaydet_bilgi = QLabel("Diyet uygulamanız sağlıklı bir yaşam için önemlidir.")
+        kaydet_bilgi.setStyleSheet("font-size: 13px; color: #7f8c8d; font-style: italic; margin-bottom: 10px;")
+        kaydet_layout.addWidget(kaydet_bilgi)
+        
+        self.kaydet_btn = QPushButton("💾 Diyet Durumunu Kaydet")
+        self.kaydet_btn.setStyleSheet(Styles.get_success_button_style())
         self.kaydet_btn.clicked.connect(self.diyet_kaydet)
+        kaydet_layout.addWidget(self.kaydet_btn)
         
-        layout.addWidget(baslik)
-        layout.addWidget(QLabel("Diyet Türü:"))
-        layout.addWidget(self.diyet_turu)
-        layout.addWidget(QLabel("Tarih:"))
-        layout.addWidget(self.tarih)
-        layout.addWidget(QLabel("Durum:"))
-        layout.addWidget(self.durum)
-        layout.addWidget(self.kaydet_btn)
+        card_layout.addWidget(diyet_frame)
+        card_layout.addWidget(tarih_frame)
+        card_layout.addWidget(durum_frame)
+        card_layout.addWidget(kaydet_frame)
         
-        self.setLayout(layout)
+        content_layout.addWidget(main_card)
+        
+        scroll_area.setWidget(content_widget)
+        
+        main_layout.addWidget(scroll_area)
     
     def diyet_kaydet(self):
         try:
@@ -429,10 +511,64 @@ class BelirtiTakipPenceresi(QWidget):
         self.hasta = hasta
         self.db = db
         
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(10)
+        
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+            QScrollBar:vertical {
+                border: none;
+                background: #f0f0f0;
+                width: 10px;
+                margin: 0px 0px 0px 0px;
+                border-radius: 5px;
+            }
+            QScrollBar::handle:vertical {
+                background: #3498db;
+                min-height: 30px;
+                border-radius: 5px;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                border: none;
+                background: none;
+            }
+        """)
+        
+        content_widget = QWidget()
+        content_layout = QVBoxLayout(content_widget)
+        content_layout.setContentsMargins(20, 20, 20, 20)
+        content_layout.setSpacing(15)
+        
+        main_card = QFrame()
+        main_card.setStyleSheet(Styles.get_modern_card_style())
+        card_layout = QVBoxLayout(main_card)
+        card_layout.setContentsMargins(25, 25, 25, 25)
+        card_layout.setSpacing(20)
         
         baslik = QLabel("⚠️ Belirti Takibi")
-        baslik.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        baslik.setStyleSheet(Styles.get_title_style())
+        card_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+        
+        bilgi_label = QLabel("Belirtilerinizi takip etmek, sağlık durumunuzu izlemek için önemlidir.")
+        bilgi_label.setStyleSheet("font-size: 14px; color: #7f8c8d; margin-bottom: 15px;")
+        bilgi_label.setWordWrap(True)
+        card_layout.addWidget(bilgi_label)
+        
+        belirti_frame = QFrame()
+        belirti_frame.setStyleSheet(Styles.get_inner_card_style())
+        belirti_layout = QVBoxLayout(belirti_frame)
+        
+        belirti_baslik = QLabel("🔍 Belirti Türü")
+        belirti_baslik.setStyleSheet(Styles.get_subtitle_style())
+        belirti_layout.addWidget(belirti_baslik)
         
         self.belirti_turu = QComboBox()
         self.belirti_turu.addItems([
@@ -443,26 +579,50 @@ class BelirtiTakipPenceresi(QWidget):
             "Kilo kaybı",
             "Yorgunluk",
             "Yaraların yavaş iyileşmesi",
-            "Bulanık görme"
+            "Bulanık görme",
+            "Baş dönmesi",
+            "Halsizlik",
+            "Cilt kuruluğu"
         ])
-        self.belirti_turu.setStyleSheet(Styles.get_input_style())
+        self.belirti_turu.setStyleSheet(Styles.get_modern_combobox_style())
+        belirti_layout.addWidget(self.belirti_turu)
+        
+        tarih_frame = QFrame()
+        tarih_frame.setStyleSheet(Styles.get_inner_card_style())
+        tarih_layout = QVBoxLayout(tarih_frame)
+        
+        tarih_baslik = QLabel("📅 Tarih")
+        tarih_baslik.setStyleSheet(Styles.get_subtitle_style())
+        tarih_layout.addWidget(tarih_baslik)
         
         self.tarih = QDateEdit()
         self.tarih.setDate(QDate.currentDate())
-        self.tarih.setStyleSheet(Styles.get_input_style())
+        self.tarih.setCalendarPopup(True)
+        self.tarih.setStyleSheet(Styles.get_modern_dateedit_style())
+        tarih_layout.addWidget(self.tarih)
         
-        self.kaydet_btn = QPushButton("Belirtiyi Kaydet")
-        self.kaydet_btn.setStyleSheet(Styles.get_button_style())
+        kaydet_frame = QFrame()
+        kaydet_frame.setStyleSheet(Styles.get_inner_card_style())
+        kaydet_layout = QVBoxLayout(kaydet_frame)
+        
+        kaydet_bilgi = QLabel("Belirtilerinizi düzenli olarak kaydedin ve doktorunuzla paylaşın.")
+        kaydet_bilgi.setStyleSheet("font-size: 13px; color: #7f8c8d; font-style: italic; margin-bottom: 10px;")
+        kaydet_layout.addWidget(kaydet_bilgi)
+        
+        self.kaydet_btn = QPushButton("💾 Belirtiyi Kaydet")
+        self.kaydet_btn.setStyleSheet(Styles.get_success_button_style())
         self.kaydet_btn.clicked.connect(self.belirti_kaydet)
+        kaydet_layout.addWidget(self.kaydet_btn)
         
-        layout.addWidget(baslik)
-        layout.addWidget(QLabel("Belirti Türü:"))
-        layout.addWidget(self.belirti_turu)
-        layout.addWidget(QLabel("Tarih:"))
-        layout.addWidget(self.tarih)
-        layout.addWidget(self.kaydet_btn)
+        card_layout.addWidget(belirti_frame)
+        card_layout.addWidget(tarih_frame)
+        card_layout.addWidget(kaydet_frame)
         
-        self.setLayout(layout)
+        content_layout.addWidget(main_card)
+        
+        scroll_area.setWidget(content_widget)
+        
+        main_layout.addWidget(scroll_area)
     
     def belirti_kaydet(self):
         try:
@@ -747,11 +907,11 @@ class DashboardPenceresi(QWidget):
         tarih_layout = QHBoxLayout()
         self.baslangic_tarihi = QDateEdit()
         self.baslangic_tarihi.setDate(QDate.currentDate().addDays(-7))
-        self.baslangic_tarihi.setStyleSheet(Styles.get_input_style())
+        self.baslangic_tarihi.setStyleSheet(Styles.get_modern_dateedit_style())
         
         self.bitis_tarihi = QDateEdit()
         self.bitis_tarihi.setDate(QDate.currentDate())
-        self.bitis_tarihi.setStyleSheet(Styles.get_input_style())
+        self.bitis_tarihi.setStyleSheet(Styles.get_modern_dateedit_style())
         
         self.filtrele_btn = QPushButton("Filtrele")
         self.filtrele_btn.setStyleSheet(Styles.get_button_style())

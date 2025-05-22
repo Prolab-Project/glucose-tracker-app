@@ -1,12 +1,16 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget, QDialog, QFrame, QSpinBox, QDateEdit, QTimeEdit
 from PyQt5.QtGui import QRegularExpressionValidator, QPixmap
 from PyQt5.QtCore import QRegularExpression, Qt, QDate, QTime
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 from styles import Styles
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+import numpy as np
 
 EMAIL_GONDEREN = "bedirhanudemy@gmail.com"  
 EMAIL_SIFRE = "gsle jctp mhzo fccz" 
@@ -78,6 +82,11 @@ class HastaListePenceresi(QWidget):
         self.guncelle_btn.setStyleSheet(Styles.get_button_style())
         self.guncelle_btn.clicked.connect(self.bilgileri_guncelle)
         
+        # Yeni grafik gösterim butonu
+        self.grafik_goster_btn = QPushButton("📈 Grafiksel Analiz")
+        self.grafik_goster_btn.setStyleSheet(Styles.get_button_style())
+        self.grafik_goster_btn.clicked.connect(self.grafik_goster)
+        
         self.olcum_ekle_btn.setEnabled(False)
         self.goruntule_btn.setEnabled(False)
         self.guncelle_btn.setEnabled(False)
@@ -86,6 +95,7 @@ class HastaListePenceresi(QWidget):
         self.belirti_ekle_btn.setEnabled(False)
         self.belirti_goruntule_btn.setEnabled(False)
         self.diyet_egzersiz_btn.setEnabled(False)
+        self.grafik_goster_btn.setEnabled(False)
         
         self.detay_layout.addWidget(self.olcum_ekle_btn)
         self.detay_layout.addWidget(self.goruntule_btn)
@@ -94,6 +104,7 @@ class HastaListePenceresi(QWidget):
         self.detay_layout.addWidget(self.belirti_ekle_btn)
         self.detay_layout.addWidget(self.belirti_goruntule_btn)
         self.detay_layout.addWidget(self.diyet_egzersiz_btn)
+        self.detay_layout.addWidget(self.grafik_goster_btn)  # Yeni buton eklendi
         self.detay_layout.addWidget(self.guncelle_btn)
 
         baslik_label = QLabel("🩺 Hastalarım")
@@ -663,6 +674,7 @@ class HastaListePenceresi(QWidget):
             self.belirti_ekle_btn.setEnabled(True)
             self.belirti_goruntule_btn.setEnabled(True)
             self.diyet_egzersiz_btn.setEnabled(True)
+            self.grafik_goster_btn.setEnabled(True)  # Yeni buton aktif edildi
 
     def bilgileri_guncelle(self) :
         if not self.secili_hasta_id or not self.secili_hastai : 
@@ -1449,6 +1461,319 @@ class HastaListePenceresi(QWidget):
             elif any(belirti in b.lower() for b in belirtiler_lower for belirti in ["yara", "yavaş", "iyileşme", "kilo kayb"]):
                 return "Şekersiz Diyet", "Yürüyüş"
             return "Şekersiz Diyet", "Yürüyüş"  # Varsayılan hiperglisemi önerisi
+
+    def grafik_goster(self):
+        """Hastanın kan şekeri değişimlerinin, diyet ve egzersizlerin etkisinin grafiksel gösterimi"""
+        if not self.secili_hasta_id:
+            QMessageBox.warning(self, "Uyarı", "Lütfen önce bir hasta seçin.")
+            return
+            
+        try:
+            # Verileri çekelim
+            olcumler = self.db.get_patient_measurements(self.secili_hasta_id)
+            diyetler = self.db.get_patient_diets(self.secili_hasta_id)
+            egzersizler = self.db.get_patient_exercises(self.secili_hasta_id)
+            
+            if not olcumler:
+                QMessageBox.warning(self, "Veri Yok", "Hasta için kan şekeri ölçümü bulunmamaktadır.")
+                return
+                
+            # Verileri düzenleyelim
+            tarihler = []
+            kan_sekeri_degerleri = []
+            zaman_etiketleri = []
+            
+            # Tarih formatı
+            for olcum in olcumler:
+                tarih = olcum[3]  # ölçüm tarihi
+                deger = olcum[4]  # kan_seker_degeri
+                zaman = olcum[5] if olcum[5] else "Belirtilmemiş"  # ölçüm_zamani
+                
+                tarihler.append(tarih)
+                kan_sekeri_degerleri.append(deger)
+                zaman_etiketleri.append(zaman)
+            
+            # Diyetleri düzenle
+            diyet_tarihleri = []
+            diyet_turleri = []
+            diyet_uygulanma = []
+            
+            for diyet in diyetler:
+                diyet_tarihleri.append(diyet[2])  # tarih
+                diyet_turleri.append(diyet[3])    # diyet_turu
+                diyet_uygulanma.append(diyet[4])  # uygulandı mı (bool)
+            
+            # Egzersizleri düzenle
+            egzersiz_tarihleri = []
+            egzersiz_turleri = []
+            egzersiz_yapilma = []
+            
+            for egzersiz in egzersizler:
+                egzersiz_tarihleri.append(egzersiz[2])  # tarih
+                egzersiz_turleri.append(egzersiz[3])    # egzersiz_turu
+                egzersiz_yapilma.append(egzersiz[4])    # yapıldı mı (bool)
+            
+            # Dialog oluştur
+            dialog = QDialog(self)
+            dialog.setWindowTitle(f"{self.secili_hasta['ad']} {self.secili_hasta['soyad']} - Grafiksel Analiz")
+            dialog.setMinimumSize(1000, 800)
+            
+            # Ana layout
+            main_layout = QVBoxLayout(dialog)
+            
+            # Başlık
+            baslik = QLabel("📈 Kan Şekeri Değişimi ve Etki Analizi")
+            baslik.setStyleSheet("font-size: 20px; font-weight: bold; color: #2c3e50; margin-bottom: 15px;")
+            main_layout.addWidget(baslik, alignment=Qt.AlignCenter)
+            
+            # Tarih aralığı seçimi
+            tarih_frame = QFrame()
+            tarih_frame.setStyleSheet(Styles.get_inner_card_style())
+            tarih_layout = QHBoxLayout(tarih_frame)
+            
+            tarih_layout.addWidget(QLabel("Başlangıç Tarihi:"))
+            baslangic_tarihi = QDateEdit()
+            if tarihler:
+                baslangic_tarihi.setDate(min(tarihler).date())
+            else:
+                baslangic_tarihi.setDate(QDate.currentDate().addMonths(-1))
+            baslangic_tarihi.setCalendarPopup(True)
+            tarih_layout.addWidget(baslangic_tarihi)
+            
+            tarih_layout.addWidget(QLabel("Bitiş Tarihi:"))
+            bitis_tarihi = QDateEdit()
+            if tarihler:
+                bitis_tarihi.setDate(max(tarihler).date())
+            else:
+                bitis_tarihi.setDate(QDate.currentDate())
+            bitis_tarihi.setCalendarPopup(True)
+            tarih_layout.addWidget(bitis_tarihi)
+            
+            filtrele_btn = QPushButton("Filtrele")
+            filtrele_btn.setStyleSheet(Styles.get_button_style())
+            tarih_layout.addWidget(filtrele_btn)
+            
+            main_layout.addWidget(tarih_frame)
+            
+            # Figure ve Canvas hazırla
+            figure = Figure(figsize=(10, 8), dpi=100)
+            canvas = FigureCanvas(figure)
+            main_layout.addWidget(canvas)
+            
+            # 1. Grafik: Kan Şekeri Değişimi
+            ax1 = figure.add_subplot(311)  # 3 satır 1 sütun, 1. grafik
+            
+            # 2. Grafik: Diyet Türü ve Kan Şekeri İlişkisi
+            ax2 = figure.add_subplot(312)  # 3 satır 1 sütun, 2. grafik
+            
+            # 3. Grafik: Egzersiz ve Kan Şekeri İlişkisi
+            ax3 = figure.add_subplot(313)  # 3 satır 1 sütun, 3. grafik
+            
+            # Grafik çizme fonksiyonu
+            def grafikleri_guncelle():
+                baslangic = baslangic_tarihi.date().toPyDate()
+                bitis = bitis_tarihi.date().toPyDate()
+                
+                # Her grafiği temizle
+                ax1.clear()
+                ax2.clear()
+                ax3.clear()
+                
+                # Filtreleme
+                filtered_data = [(tarih, deger, zaman) for tarih, deger, zaman in 
+                                zip(tarihler, kan_sekeri_degerleri, zaman_etiketleri) 
+                                if baslangic <= tarih.date() <= bitis]
+                
+                if not filtered_data:
+                    QMessageBox.warning(dialog, "Veri Yok", "Seçilen tarih aralığında veri bulunamadı.")
+                    return
+                
+                f_tarihler, f_degerler, f_zamanlar = zip(*filtered_data)
+                
+                # 1. Grafik: Kan Şekeri Değişimi (Zamana göre)
+                ax1.plot(f_tarihler, f_degerler, 'o-', color='#3498db', linewidth=2, markersize=6)
+                ax1.set_title('Kan Şekeri Değişimi', fontsize=12, fontweight='bold')
+                ax1.set_ylabel('Kan Şekeri (mg/dL)', fontsize=10)
+                ax1.set_xlabel('Tarih', fontsize=10)
+                ax1.grid(True, linestyle='--', alpha=0.7)
+                
+                # Normal kan şekeri aralığını göster
+                ax1.axhspan(70, 110, alpha=0.2, color='green', label='Normal Aralık (70-110 mg/dL)')
+                ax1.axhspan(110, 180, alpha=0.2, color='yellow', label='Yüksek Normal (110-180 mg/dL)')
+                ax1.axhspan(180, max(f_degerler) + 20, alpha=0.2, color='red', label='Yüksek (>180 mg/dL)')
+                ax1.axhspan(0, 70, alpha=0.2, color='orange', label='Düşük (<70 mg/dL)')
+                ax1.legend(loc='upper right', fontsize=9)
+                
+                # Öğün zamanlarını işaretle
+                renkler = {'Sabah': 'blue', 'Öğle': 'green', 'İkindi': 'purple', 'Akşam': 'orange', 'Gece': 'red'}
+                for tarih, deger, zaman in zip(f_tarihler, f_degerler, f_zamanlar):
+                    renk = renkler.get(zaman, 'black')
+                    ax1.annotate(zaman, (tarih, deger), textcoords="offset points", 
+                                 xytext=(0,10), ha='center', fontsize=8, color=renk)
+                
+                # 2. Grafik: Diyet Türlerinin Kan Şekerine Etkisi
+                diyet_etkileri = {}
+                
+                # Her diyet türü için ortalama kan şekeri değişimini hesapla
+                for diyet_tarih, diyet_tur, uygulandi in zip(diyet_tarihleri, diyet_turleri, diyet_uygulanma):
+                    if baslangic <= diyet_tarih <= bitis and uygulandi:
+                        # Diyetten sonraki gün ölçümleri
+                        sonraki_gun = diyet_tarih + timedelta(days=1)
+                        onceki_gun = diyet_tarih - timedelta(days=1)
+                        
+                        # Diyetten önceki gün ortalama kan şekeri
+                        onceki_degerler = [deger for tarih, deger in zip(tarihler, kan_sekeri_degerleri) 
+                                          if tarih.date() == onceki_gun]
+                        onceki_ortalama = sum(onceki_degerler) / len(onceki_degerler) if onceki_degerler else None
+                        
+                        # Diyet günü ortalama kan şekeri
+                        diyet_gunu_degerler = [deger for tarih, deger in zip(tarihler, kan_sekeri_degerleri) 
+                                             if tarih.date() == diyet_tarih]
+                        diyet_gunu_ortalama = sum(diyet_gunu_degerler) / len(diyet_gunu_degerler) if diyet_gunu_degerler else None
+                        
+                        # Diyetten sonraki gün ortalama kan şekeri
+                        sonraki_degerler = [deger for tarih, deger in zip(tarihler, kan_sekeri_degerleri) 
+                                           if tarih.date() == sonraki_gun]
+                        sonraki_ortalama = sum(sonraki_degerler) / len(sonraki_degerler) if sonraki_degerler else None
+                        
+                        if diyet_tur not in diyet_etkileri:
+                            diyet_etkileri[diyet_tur] = {
+                                'onceki': [],
+                                'diyet_gunu': [],
+                                'sonraki': []
+                            }
+                        
+                        if onceki_ortalama:
+                            diyet_etkileri[diyet_tur]['onceki'].append(onceki_ortalama)
+                        if diyet_gunu_ortalama:
+                            diyet_etkileri[diyet_tur]['diyet_gunu'].append(diyet_gunu_ortalama)
+                        if sonraki_ortalama:
+                            diyet_etkileri[diyet_tur]['sonraki'].append(sonraki_ortalama)
+                
+                # Diyet türlerinin etkisini çiz
+                x = np.arange(3)  # Önceki, Diyet Günü, Sonraki
+                width = 0.15
+                multiplier = 0
+                
+                for diyet_tur, veriler in diyet_etkileri.items():
+                    if not (veriler['onceki'] or veriler['diyet_gunu'] or veriler['sonraki']):
+                        continue
+                    
+                    ortalamalar = [
+                        sum(veriler['onceki']) / len(veriler['onceki']) if veriler['onceki'] else 0,
+                        sum(veriler['diyet_gunu']) / len(veriler['diyet_gunu']) if veriler['diyet_gunu'] else 0,
+                        sum(veriler['sonraki']) / len(veriler['sonraki']) if veriler['sonraki'] else 0
+                    ]
+                    
+                    offset = width * multiplier
+                    rects = ax2.bar(x + offset, ortalamalar, width, label=diyet_tur)
+                    ax2.bar_label(rects, padding=3, fontsize=8)
+                    multiplier += 1
+                
+                ax2.set_ylabel('Ortalama Kan Şekeri (mg/dL)', fontsize=10)
+                ax2.set_title('Diyet Türlerinin Kan Şekerine Etkisi', fontsize=12, fontweight='bold')
+                ax2.set_xticks(x + width * (len(diyet_etkileri) - 1) / 2)
+                ax2.set_xticklabels(['Diyetten Önceki Gün', 'Diyet Günü', 'Diyetten Sonraki Gün'])
+                ax2.legend(loc='upper right', fontsize=9)
+                ax2.grid(True, linestyle='--', axis='y', alpha=0.7)
+                
+                # 3. Grafik: Egzersiz ve Kan Şekeri İlişkisi
+                egzersiz_etkileri = {}
+                
+                # Her egzersiz türü için ortalama kan şekeri değişimini hesapla
+                for egzersiz_tarih, egzersiz_tur, yapildi in zip(egzersiz_tarihleri, egzersiz_turleri, egzersiz_yapilma):
+                    if baslangic <= egzersiz_tarih <= bitis and yapildi:
+                        # Egzersizden sonraki gün ölçümleri
+                        sonraki_gun = egzersiz_tarih + timedelta(days=1)
+                        
+                        # Egzersiz günü ortalama kan şekeri
+                        egzersiz_gunu_degerler = [deger for tarih, deger in zip(tarihler, kan_sekeri_degerleri) 
+                                               if tarih.date() == egzersiz_tarih]
+                        egzersiz_gunu_ortalama = sum(egzersiz_gunu_degerler) / len(egzersiz_gunu_degerler) if egzersiz_gunu_degerler else None
+                        
+                        # Egzersizden sonraki gün ortalama kan şekeri
+                        sonraki_degerler = [deger for tarih, deger in zip(tarihler, kan_sekeri_degerleri) 
+                                           if tarih.date() == sonraki_gun]
+                        sonraki_ortalama = sum(sonraki_degerler) / len(sonraki_degerler) if sonraki_degerler else None
+                        
+                        if egzersiz_tur not in egzersiz_etkileri:
+                            egzersiz_etkileri[egzersiz_tur] = {
+                                'egzersiz_gunu': [],
+                                'sonraki': []
+                            }
+                        
+                        if egzersiz_gunu_ortalama:
+                            egzersiz_etkileri[egzersiz_tur]['egzersiz_gunu'].append(egzersiz_gunu_ortalama)
+                        if sonraki_ortalama:
+                            egzersiz_etkileri[egzersiz_tur]['sonraki'].append(sonraki_ortalama)
+                
+                # Egzersiz türlerinin etkisini çiz
+                x = np.arange(2)  # Egzersiz Günü, Sonraki Gün
+                width = 0.15
+                multiplier = 0
+                
+                for egzersiz_tur, veriler in egzersiz_etkileri.items():
+                    if not (veriler['egzersiz_gunu'] or veriler['sonraki']):
+                        continue
+                    
+                    ortalamalar = [
+                        sum(veriler['egzersiz_gunu']) / len(veriler['egzersiz_gunu']) if veriler['egzersiz_gunu'] else 0,
+                        sum(veriler['sonraki']) / len(veriler['sonraki']) if veriler['sonraki'] else 0
+                    ]
+                    
+                    offset = width * multiplier
+                    rects = ax3.bar(x + offset, ortalamalar, width, label=egzersiz_tur)
+                    ax3.bar_label(rects, padding=3, fontsize=8)
+                    multiplier += 1
+                
+                ax3.set_ylabel('Ortalama Kan Şekeri (mg/dL)', fontsize=10)
+                ax3.set_title('Egzersizlerin Kan Şekerine Etkisi', fontsize=12, fontweight='bold')
+                ax3.set_xticks(x + width * (len(egzersiz_etkileri) - 1) / 2)
+                ax3.set_xticklabels(['Egzersiz Günü', 'Egzersizden Sonraki Gün'])
+                ax3.legend(loc='upper right', fontsize=9)
+                ax3.grid(True, linestyle='--', axis='y', alpha=0.7)
+                
+                figure.tight_layout()
+                canvas.draw()
+            
+            # İlk çizimi yap
+            grafikleri_guncelle()
+            
+            # Filtreleme olayını bağla
+            filtrele_btn.clicked.connect(grafikleri_guncelle)
+            
+            # Alt butonlar
+            buton_layout = QHBoxLayout()
+            
+            kapat_btn = QPushButton("Kapat")
+            kapat_btn.setStyleSheet(Styles.get_button_style())
+            kapat_btn.clicked.connect(dialog.close)
+            
+            kaydet_btn = QPushButton("Grafikleri Kaydet")
+            kaydet_btn.setStyleSheet(Styles.get_button_style())
+            
+            def grafikleri_kaydet():
+                dosya_yolu, _ = QFileDialog.getSaveFileName(
+                    dialog, 
+                    "Grafikleri Kaydet",
+                    f"{self.secili_hasta['ad']}_{self.secili_hasta['soyad']}_kan_sekeri_analizi.png",
+                    "PNG Dosyası (*.png);;JPEG Dosyası (*.jpg)"
+                )
+                if dosya_yolu:
+                    figure.savefig(dosya_yolu, dpi=300, bbox_inches='tight')
+                    QMessageBox.information(dialog, "Başarılı", f"Grafikler {dosya_yolu} konumuna kaydedildi.")
+            
+            kaydet_btn.clicked.connect(grafikleri_kaydet)
+            
+            buton_layout.addWidget(kaydet_btn)
+            buton_layout.addWidget(kapat_btn)
+            
+            main_layout.addLayout(buton_layout)
+            
+            dialog.exec_()
+            
+        except Exception as e:
+            QMessageBox.critical(self, "Hata", f"Grafikler oluşturulurken bir hata oluştu: {str(e)}")
 
 class HastaEklePenceresi(QWidget): 
     def __init__(self, doktor, db):
