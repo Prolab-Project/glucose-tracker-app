@@ -111,6 +111,7 @@ class HastaListePenceresi(QWidget):
         filtre_layout.addLayout(buton_layout)
         
         self.detay_paneli = QWidget()
+        self.detay_paneli.setFixedWidth(300)  # Hasta bilgileri panelinin genişliğini sınırla
         self.detay_layout = QVBoxLayout()
         
         self.profil_foto = QLabel()
