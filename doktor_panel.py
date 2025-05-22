@@ -32,6 +32,84 @@ class HastaListePenceresi(QWidget):
 
         sol_layout = QVBoxLayout()
 
+        # Filtreleme bölümü
+        filtre_frame = QFrame()
+        filtre_frame.setStyleSheet(Styles.get_inner_card_style())
+        filtre_layout = QVBoxLayout(filtre_frame)
+        
+        filtre_baslik = QLabel("🔍 Hastaları Filtrele")
+        filtre_baslik.setStyleSheet("font-size: 16px; font-weight: bold; color: #2c3e50;")
+        filtre_layout.addWidget(filtre_baslik)
+        
+        # Kan şekeri filtreleme
+        kan_sekeri_layout = QHBoxLayout()
+        kan_sekeri_layout.addWidget(QLabel("Kan Şekeri:"))
+        
+        self.kan_sekeri_filtre = QComboBox()
+        self.kan_sekeri_filtre.addItems([
+            "Hepsi", 
+            "Düşük (<70 mg/dL)", 
+            "Normal (70-110 mg/dL)",
+            "Yüksek Normal (111-150 mg/dL)",
+            "Yüksek (151-200 mg/dL)",
+            "Çok Yüksek (>200 mg/dL)"
+        ])
+        self.kan_sekeri_filtre.setStyleSheet(Styles.get_modern_combobox_style())
+        kan_sekeri_layout.addWidget(self.kan_sekeri_filtre)
+        
+        # Belirti filtreleme
+        belirti_layout = QHBoxLayout()
+        belirti_layout.addWidget(QLabel("Belirti:"))
+        
+        self.belirti_filtre = QComboBox()
+        self.belirti_filtre.addItems([
+            "Hepsi",
+            "Poliüri (Sık idrara çıkma)",
+            "Polifaji (Aşırı açlık hissi)",
+            "Polidipsi (Aşırı susama hissi)",
+            "Nöropati (El ve ayaklarda karıncalanma veya uyuşma hissi)",
+            "Kilo kaybı",
+            "Yorgunluk",
+            "Yaraların yavaş iyileşmesi",
+            "Bulanık görme"
+        ])
+        self.belirti_filtre.setStyleSheet(Styles.get_modern_combobox_style())
+        belirti_layout.addWidget(self.belirti_filtre)
+        
+        # Tarih filtreleme
+        tarih_layout = QHBoxLayout()
+        tarih_layout.addWidget(QLabel("Tarih:"))
+        
+        self.tarih_filtre = QComboBox()
+        self.tarih_filtre.addItems([
+            "Hepsi",
+            "Bugün",
+            "Son 3 Gün",
+            "Son 7 Gün",
+            "Son 30 Gün"
+        ])
+        self.tarih_filtre.setStyleSheet(Styles.get_modern_combobox_style())
+        tarih_layout.addWidget(self.tarih_filtre)
+        
+        # Filtreleme butonları
+        buton_layout = QHBoxLayout()
+        
+        self.uygula_btn = QPushButton("Filtreleri Uygula")
+        self.uygula_btn.setStyleSheet(Styles.get_button_style())
+        self.uygula_btn.clicked.connect(self.hastalari_getir)
+        
+        self.temizle_btn = QPushButton("Filtreleri Temizle")
+        self.temizle_btn.setStyleSheet(Styles.get_button_style())
+        self.temizle_btn.clicked.connect(self.filtreleri_temizle)
+        
+        buton_layout.addWidget(self.uygula_btn)
+        buton_layout.addWidget(self.temizle_btn)
+        
+        filtre_layout.addLayout(kan_sekeri_layout)
+        filtre_layout.addLayout(belirti_layout)
+        filtre_layout.addLayout(tarih_layout)
+        filtre_layout.addLayout(buton_layout)
+        
         self.detay_paneli = QWidget()
         self.detay_layout = QVBoxLayout()
         
@@ -112,6 +190,7 @@ class HastaListePenceresi(QWidget):
         self.detay_label.setStyleSheet("color: black; font-size: 16px;")
 
         sol_layout.addWidget(baslik_label)
+        sol_layout.addWidget(filtre_frame)  # Filtreleme panelini ekle
         sol_layout.addWidget(self.hasta_listesi)
         self.detay_paneli.setLayout(self.detay_layout)
         self.layout.addWidget(self.detay_paneli)
@@ -123,6 +202,111 @@ class HastaListePenceresi(QWidget):
         
         self.secili_hasta_id = None
         self.secili_hasta = None
+
+    def hastalari_getir(self):
+        self.hasta_listesi.clear()  
+        
+        # Filtreleri al
+        kan_sekeri_filtre = self.kan_sekeri_filtre.currentText()
+        belirti_filtre = self.belirti_filtre.currentText()
+        tarih_filtre = self.tarih_filtre.currentText()
+        
+        # Tüm hastaları al
+        hastalar = self.db.get_doctor_patients(self.doktor['id'])
+        filtrelenmis_hastalar = []
+        
+        for hasta in hastalar:
+            hasta_id = hasta[0]
+            eklenecek = True
+            
+            # Kan şekeri filtresini uygula
+            if kan_sekeri_filtre != "Hepsi":
+                olcumler = self.db.get_patient_measurements(hasta_id)
+                if olcumler:
+                    # Son ölçüm yerine tüm ölçümlerin ortalamasını hesapla
+                    toplam_kan_sekeri = 0
+                    olcum_sayisi = 0
+                    
+                    for olcum in olcumler:
+                        toplam_kan_sekeri += olcum[4]  # olcum[4] = kan_seker_degeri
+                        olcum_sayisi += 1
+                    
+                    # Ortalama kan şekeri değeri
+                    ortalama_kan_sekeri = toplam_kan_sekeri / olcum_sayisi if olcum_sayisi > 0 else 0
+                    
+                    # Ortalama değere göre filtreleme yap
+                    if kan_sekeri_filtre == "Düşük (<70 mg/dL)" and ortalama_kan_sekeri >= 70:
+                        eklenecek = False
+                    elif kan_sekeri_filtre == "Normal (70-110 mg/dL)" and (ortalama_kan_sekeri < 70 or ortalama_kan_sekeri > 110):
+                        eklenecek = False
+                    elif kan_sekeri_filtre == "Yüksek Normal (111-150 mg/dL)" and (ortalama_kan_sekeri < 111 or ortalama_kan_sekeri > 150):
+                        eklenecek = False
+                    elif kan_sekeri_filtre == "Yüksek (151-200 mg/dL)" and (ortalama_kan_sekeri < 151 or ortalama_kan_sekeri > 200):
+                        eklenecek = False
+                    elif kan_sekeri_filtre == "Çok Yüksek (>200 mg/dL)" and ortalama_kan_sekeri <= 200:
+                        eklenecek = False
+                else:
+                    # Ölçüm yoksa ve filtre uygulanıyorsa, hastayı listeye alma
+                    if kan_sekeri_filtre != "Hepsi":
+                        eklenecek = False
+            
+            # Belirti filtresini uygula
+            if eklenecek and belirti_filtre != "Hepsi":
+                belirtiler = self.db.get_patient_symptoms(hasta_id)
+                belirti_var = False
+                
+                for belirti in belirtiler:
+                    if belirti[3] == belirti_filtre:
+                        belirti_var = True
+                        break
+                
+                if not belirti_var:
+                    eklenecek = False
+            
+            # Tarih filtresini uygula
+            if eklenecek and tarih_filtre != "Hepsi":
+                olcumler = self.db.get_patient_measurements(hasta_id)
+                tarih_filtresine_uyuyor = False
+                
+                if olcumler:
+                    bugun = datetime.now().date()
+                    
+                    for olcum in olcumler:
+                        olcum_tarihi = olcum[3].date()
+                        fark = (bugun - olcum_tarihi).days
+                        
+                        if tarih_filtre == "Bugün" and fark == 0:
+                            tarih_filtresine_uyuyor = True
+                            break
+                        elif tarih_filtre == "Son 3 Gün" and fark <= 2:
+                            tarih_filtresine_uyuyor = True
+                            break
+                        elif tarih_filtre == "Son 7 Gün" and fark <= 6:
+                            tarih_filtresine_uyuyor = True
+                            break
+                        elif tarih_filtre == "Son 30 Gün" and fark <= 29:
+                            tarih_filtresine_uyuyor = True
+                            break
+                
+                if not tarih_filtresine_uyuyor:
+                    eklenecek = False
+            
+            if eklenecek:
+                filtrelenmis_hastalar.append(hasta)
+        
+        # Filtrelenmiş hastaları listele
+        for hasta in filtrelenmis_hastalar:
+            self.hasta_listesi.addItem(f"{hasta[2]} {hasta[3]} - TC: {hasta[1]}")
+        
+        # Filtre sonuçlarını göster
+        if not filtrelenmis_hastalar:
+            self.hasta_listesi.addItem("Filtrelere uygun hasta bulunamadı.")
+    
+    def filtreleri_temizle(self):
+        self.kan_sekeri_filtre.setCurrentIndex(0)  # "Hepsi" seçeneği
+        self.belirti_filtre.setCurrentIndex(0)     # "Hepsi" seçeneği
+        self.tarih_filtre.setCurrentIndex(0)       # "Hepsi" seçeneği
+        self.hastalari_getir()  # Filtreleri temizleyip listeyi yenile
     
     def olcum_ekle(self):
         if not self.secili_hasta_id or not self.secili_hasta:
@@ -690,12 +874,6 @@ class HastaListePenceresi(QWidget):
         dialog.setWindowTitle("Hasta Bilgilerini Güncelle")
         dialog.setMinimumSize(600, 400)
 
-
-    def hastalari_getir(self):
-        self.hasta_listesi.clear()  
-        hastalar = self.db.get_doctor_patients(self.doktor['id'])
-        for hasta in hastalar:
-            self.hasta_listesi.addItem(f"{hasta[2]} {hasta[3]} - TC: {hasta[1]}")
 
     def insulin_oneri(self):
         if not self.secili_hasta_id or not self.secili_hasta:
