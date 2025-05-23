@@ -156,11 +156,7 @@ class HastaListePenceresi(QWidget):
         self.diyet_egzersiz_btn = QPushButton("🔄 Diyet & Egzersiz Öneri")
         self.diyet_egzersiz_btn.setStyleSheet(Styles.get_button_style())
         self.diyet_egzersiz_btn.clicked.connect(self.diyet_egzersiz_oneri_goster)
-        
-        self.guncelle_btn = QPushButton("✏️ Bilgileri Güncelle")
-        self.guncelle_btn.setStyleSheet(Styles.get_button_style())
-        self.guncelle_btn.clicked.connect(self.bilgileri_guncelle)
-        
+                
         # Yeni grafik gösterim butonu
         self.grafik_goster_btn = QPushButton("📈 Grafiksel Analiz")
         self.grafik_goster_btn.setStyleSheet(Styles.get_button_style())
@@ -861,19 +857,6 @@ class HastaListePenceresi(QWidget):
             self.diyet_egzersiz_btn.setEnabled(True)
             self.grafik_goster_btn.setEnabled(True)  # Yeni buton aktif edildi
 
-    def bilgileri_guncelle(self) :
-        if not self.secili_hasta_id or not self.secili_hastai : 
-            QMessageBox.warning(self, "Uyarı", "Lütfen bir hasta seçin.")
-            return
-        
-        hasta_bilgileri = self.db.get_user_by_tc (self.secili_hasta_id)
-
-        if not hasta_bilgileri: 
-            QMessageBox.warning(self, "HATA", "Hasta bilgileri alınırken hata oluştu.")
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Hasta Bilgilerini Güncelle")
-        dialog.setMinimumSize(600, 400)
 
 
     def insulin_oneri(self):
