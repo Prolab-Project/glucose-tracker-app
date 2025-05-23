@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget, QDialog, QFrame, QSpinBox, QDateEdit, QTimeEdit
+from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QListWidget, QPushButton, QLineEdit, QMessageBox, QComboBox, QFileDialog, QGraphicsPixmapItem, QHBoxLayout, QStackedWidget, QDialog, QFrame, QSpinBox, QDateEdit, QTimeEdit, QProgressBar
 from PyQt5.QtGui import QRegularExpressionValidator, QPixmap
 from PyQt5.QtCore import QRegularExpression, Qt, QDate, QTime
 from datetime import datetime, timedelta
@@ -582,7 +582,7 @@ class HastaListePenceresi(QWidget):
             
             dialog = QDialog(self) 
             dialog.setWindowTitle("Hasta diyet bilgileri")
-            dialog.setMinimumSize(600,400)
+            dialog.setMinimumSize(600,500)
 
             layout = QVBoxLayout() 
 
@@ -593,6 +593,66 @@ class HastaListePenceresi(QWidget):
                 baslik= QLabel("Diyet bilgileri")        
             baslik.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
             layout.addWidget(baslik)
+            
+            # Diyet uygulanma oranı kartı
+            oran_frame = QFrame()
+            oran_frame.setStyleSheet("""
+                background-color: white;
+                border-radius: 9px;
+                border: 1px solid #e0e0e0;
+                padding: 10px;
+                margin-bottom: 5px;
+            """)
+            oran_layout = QVBoxLayout(oran_frame)
+            
+            # Diyet uygulanma yüzdesi hesaplama
+            diyet_toplam = len(diyetler) if diyetler else 0
+            diyet_uygulanan = sum(1 for d in diyetler if d[4]) if diyetler else 0
+            diyet_uyum_yuzdesi = int((diyet_uygulanan / diyet_toplam) * 100) if diyet_toplam > 0 else 0
+            
+            # Uyum oranı başlık
+            oran_baslik = QLabel("🍽️ Diyet Uyum Oranı:")
+            oran_baslik.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
+            oran_layout.addWidget(oran_baslik)
+            
+            # İlerleme çubuğu
+            oran_bar = QProgressBar()
+            oran_bar.setValue(diyet_uyum_yuzdesi)
+            oran_bar.setFormat("%p%")
+            oran_bar.setAlignment(Qt.AlignCenter)
+            
+            # Renklendirme
+            if diyet_uyum_yuzdesi >= 80:
+                renk = "#27ae60"  # Yeşil
+            elif diyet_uyum_yuzdesi >= 50:
+                renk = "#f39c12"  # Turuncu
+            else:
+                renk = "#e74c3c"  # Kırmızı
+                
+            oran_bar.setStyleSheet(f"""
+                QProgressBar {{
+                    border: 1px solid #e0e0e0;
+                    border-radius: 5px;
+                    text-align: center;
+                    color: white;
+                    font-weight: bold;
+                    font-size: 14px;
+                    height: 25px;
+                    background-color: #f5f5f5;
+                }}
+                QProgressBar::chunk {{
+                    background-color: {renk};
+                    border-radius: 4px;
+                }}
+            """)
+            oran_layout.addWidget(oran_bar)
+            
+            # Detay bilgisi
+            oran_detay = QLabel(f"Toplam {diyet_toplam} diyetten {diyet_uygulanan} tanesi uygulandı.")
+            oran_detay.setStyleSheet("color: #666; margin-top: 5px;")
+            oran_layout.addWidget(oran_detay)
+            
+            layout.addWidget(oran_frame)
             
             liste = QListWidget()
             liste.setStyleSheet("""
