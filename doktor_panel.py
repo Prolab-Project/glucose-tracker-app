@@ -164,7 +164,6 @@ class HastaListePenceresi(QWidget):
         
         self.olcum_ekle_btn.setEnabled(False)
         self.goruntule_btn.setEnabled(False)
-        self.guncelle_btn.setEnabled(False)
         self.diyet_goruntule_btn.setEnabled(False)
         self.insulin_oneri_btn.setEnabled(False)
         self.belirti_ekle_btn.setEnabled(False)
@@ -180,7 +179,6 @@ class HastaListePenceresi(QWidget):
         self.detay_layout.addWidget(self.belirti_goruntule_btn)
         self.detay_layout.addWidget(self.diyet_egzersiz_btn)
         self.detay_layout.addWidget(self.grafik_goster_btn)  # Yeni buton eklendi
-        self.detay_layout.addWidget(self.guncelle_btn)
 
         baslik_label = QLabel("🩺 Hastalarım")
         baslik_label.setStyleSheet("font-size: 28px; font-weight: bold; color: #2c3e50;")
@@ -849,7 +847,6 @@ class HastaListePenceresi(QWidget):
             
             self.olcum_ekle_btn.setEnabled(True)
             self.goruntule_btn.setEnabled(True)
-            self.guncelle_btn.setEnabled(True)
             self.diyet_goruntule_btn.setEnabled(True)
             self.insulin_oneri_btn.setEnabled(True)
             self.belirti_ekle_btn.setEnabled(True)
