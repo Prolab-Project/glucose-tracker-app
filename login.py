@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox, QHBoxLayout
-from PyQt5.QtGui import QRegularExpressionValidator, QPixmap, QFont
-from PyQt5.QtCore import QRegularExpression, Qt
+from PyQt5.QtWidgets import QApplication, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QMessageBox, QHBoxLayout, QCheckBox
+from PyQt5.QtGui import QRegularExpressionValidator, QPixmap, QFont, QIcon
+from PyQt5.QtCore import QRegularExpression, Qt, QPropertyAnimation, QEasingCurve
 import sys
 from doktor_panel import DoktorPanel
 import hashlib
@@ -19,10 +19,11 @@ class LoginWindow(QWidget):
         
         self.setStyleSheet("""
             QWidget {
-                background-color: #1a1a1a;
+                background-color: #f5f5f5;
+                font-family: 'Segoe UI', Arial, sans-serif;
             }
             QLabel {
-                color: #ffffff;
+                color: #333333;
             }
         """)
 
@@ -32,7 +33,7 @@ class LoginWindow(QWidget):
         left_widget = QWidget()
         left_widget.setStyleSheet("""
             QWidget {
-                background-color: #2c3e50;
+                background-color: #3498db;
                 border-radius: 20px;
             }
         """)
@@ -41,7 +42,8 @@ class LoginWindow(QWidget):
         logo_label.setStyleSheet("""
             QLabel {
                 font-size: 120px;
-                color: #3498db;
+                color: white;
+                margin: 20px;
             }
         """)
         logo_label.setAlignment(Qt.AlignCenter)
@@ -51,7 +53,8 @@ class LoginWindow(QWidget):
             QLabel {
                 font-size: 36px;
                 font-weight: bold;
-                color: #ffffff;
+                color: white;
+                margin-top: 20px;
             }
         """)
         title_label.setAlignment(Qt.AlignCenter)
@@ -60,7 +63,8 @@ class LoginWindow(QWidget):
         subtitle_label.setStyleSheet("""
             QLabel {
                 font-size: 18px;
-                color: #bdc3c7;
+                color: rgba(255, 255, 255, 0.85);
+                margin-bottom: 20px;
             }
         """)
         subtitle_label.setAlignment(Qt.AlignCenter)
@@ -78,27 +82,29 @@ class LoginWindow(QWidget):
         right_widget = QWidget()
         right_widget.setStyleSheet("""
             QWidget {
-                background-color: #2c3e50;
+                background-color: white;
                 border-radius: 20px;
+                box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.1);
             }
         """)
         
         form_layout = QVBoxLayout()
         form_layout.setSpacing(20)
+        form_layout.setContentsMargins(40, 40, 40, 40)
         
         welcome_label = QLabel("Hoş Geldiniz")
         welcome_label.setStyleSheet("""
             QLabel {
                 font-size: 32px;
                 font-weight: bold;
-                color: #ffffff;
-                margin-bottom: 20px;
+                color: #333333;
+                margin-bottom: 30px;
             }
         """)
         welcome_label.setAlignment(Qt.AlignCenter)
         
         self.tc_label = QLabel("TC Kimlik Numarası")
-        self.tc_label.setStyleSheet("font-size: 14px; color: #bdc3c7;")
+        self.tc_label.setStyleSheet("font-size: 14px; color: #666666; margin-bottom: 5px;")
         self.tc_no = QLineEdit(self)
         self.tc_no.setPlaceholderText("TC kimlik no giriniz")
         self.tc_no.setMaxLength(11)
@@ -107,22 +113,51 @@ class LoginWindow(QWidget):
         self.tc_no.setStyleSheet(self.get_input_style())
 
         self.sifre_label = QLabel("Şifre")
-        self.sifre_label.setStyleSheet("font-size: 14px; color: #bdc3c7;")
+        self.sifre_label.setStyleSheet("font-size: 14px; color: #666666; margin-bottom: 5px; margin-top: 10px;")
         self.sifre = QLineEdit(self)
         self.sifre.setPlaceholderText("Şifrenizi giriniz")
         self.sifre.setStyleSheet(self.get_input_style())
         self.sifre.setEchoMode(QLineEdit.Password)
         
+        
         self.girisButton = QPushButton("Giriş Yap", self)
+        self.girisButton.setCursor(Qt.PointingHandCursor)
         self.girisButton.setStyleSheet(self.get_button_style())
         self.girisButton.clicked.connect(self.giris_button_clicked)
+        
+        # Kayıt ol bağlantısı
+        register_layout = QHBoxLayout()
+        register_label = QLabel("Hesabınız yok mu?")
+        register_label.setStyleSheet("color: #666666; font-size: 13px;")
+        
+        self.register_button = QPushButton("Kayıt Ol")
+        self.register_button.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                color: #3498db;
+                text-decoration: underline;
+                font-size: 13px;
+            }
+            QPushButton:hover {
+                color: #2980b9;
+            }
+        """)
+        
+        register_layout.addStretch()
+        register_layout.addWidget(register_label)
+        register_layout.addWidget(self.register_button)
+        register_layout.addStretch()
         
         form_layout.addWidget(welcome_label)
         form_layout.addWidget(self.tc_label)
         form_layout.addWidget(self.tc_no)
         form_layout.addWidget(self.sifre_label)
+
         form_layout.addWidget(self.sifre)
         form_layout.addWidget(self.girisButton)
+        form_layout.addSpacing(20)
+        form_layout.addLayout(register_layout)
         form_layout.addStretch()
         
         right_widget.setLayout(form_layout)
@@ -136,18 +171,19 @@ class LoginWindow(QWidget):
         return """
         QLineEdit {
             padding: 15px;
-            border: 2px solid #34495e;val
-            border-radius: 10px;
-            font-size: 16px;
-            background-color: #34495e;
-            color: #ffffff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 15px;
+            background-color: white;
+            color: #333333;
+            transition: border 0.3s, background 0.3s;
         }
         QLineEdit:focus {
             border-color: #3498db;
-            background-color: #2c3e50;
+            background-color: #f8f9fa;
         }
         QLineEdit::placeholder {
-            color: #95a5a6;
+            color: #aaaaaa;
         }
         """
 
@@ -159,14 +195,15 @@ class LoginWindow(QWidget):
             font-weight: bold;
             background-color: #3498db;
             color: white;
-            border-radius: 10px;
+            border-radius: 8px;
             border: none;
+            margin-top: 20px;
         }
         QPushButton:hover {
             background-color: #2980b9;
         }
         QPushButton:pressed {
-            background-color: #2471a3;
+            background-color: #1c6ea4;
         }
         """        
     def giris_button_clicked(self): 
