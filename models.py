@@ -81,7 +81,6 @@ def create_tables():
             )
         """)
         
-        # Uyarı tablosu
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS uyari (
                 id SERIAL PRIMARY KEY,
@@ -92,7 +91,6 @@ def create_tables():
             )
         """)
         
-        # İnsülin tablosu
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS insulin (
                 id SERIAL PRIMARY KEY,

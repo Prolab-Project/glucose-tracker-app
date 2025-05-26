@@ -125,28 +125,9 @@ class LoginWindow(QWidget):
         self.girisButton.setStyleSheet(self.get_button_style())
         self.girisButton.clicked.connect(self.giris_button_clicked)
         
-        # Kayıt ol bağlantısı
         register_layout = QHBoxLayout()
-        register_label = QLabel("Hesabınız yok mu?")
-        register_label.setStyleSheet("color: #666666; font-size: 13px;")
-        
-        self.register_button = QPushButton("Kayıt Ol")
-        self.register_button.setStyleSheet("""
-            QPushButton {
-                background: transparent;
-                border: none;
-                color: #3498db;
-                text-decoration: underline;
-                font-size: 13px;
-            }
-            QPushButton:hover {
-                color: #2980b9;
-            }
-        """)
         
         register_layout.addStretch()
-        register_layout.addWidget(register_label)
-        register_layout.addWidget(self.register_button)
         register_layout.addStretch()
         
         form_layout.addWidget(welcome_label)

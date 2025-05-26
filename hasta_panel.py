@@ -645,7 +645,6 @@ class GrafikPenceresi(QWidget):
         
         layout = QVBoxLayout()
         
-        # Matplotlib figürü oluştur
         self.figure = Figure(figsize=(10, 6), facecolor='#2c3e50')
         self.canvas = FigureCanvas(self.figure)
         self.ax = self.figure.add_subplot(111)
@@ -662,13 +661,11 @@ class GrafikPenceresi(QWidget):
         olcumler = self.db.get_patient_measurements(self.hasta['id'])
         bugun_olcumler = [o for o in olcumler if o[3].date() == bugun]
         
-        # Ölçüm zamanlarının sırası
         zaman_sirasi = {"Sabah": 0, "Öğle": 1, "İkindi": 2, "Akşam": 3, "Gece": 4}
         
         self.ax.clear()
         if bugun_olcumler:
-            # Ölçümleri zamana göre sırala
-            bugun_olcumler.sort(key=lambda x: zaman_sirasi[x[5]])  # x[5] olcum_zamani
+            bugun_olcumler.sort(key=lambda x: zaman_sirasi[x[5]])  
             
             olcum_zamanlari = [o[5] for o in bugun_olcumler]  # olcum_zamani
             degerler = [o[4] for o in bugun_olcumler]  # olcum_degeri
@@ -686,21 +683,17 @@ class GrafikPenceresi(QWidget):
                                color='white',
                                fontsize=10)
             
-            # Grafik ayarları
             self.ax.set_xlabel('Ölçüm Zamanı', color='white', fontsize=12)
             self.ax.set_ylabel('Kan Şekeri (mg/dL)', color='white', fontsize=12)
             self.ax.tick_params(axis='x', colors='white', rotation=45)
             self.ax.tick_params(axis='y', colors='white')
             self.ax.grid(True, color='#95a5a6', alpha=0.2)
             
-            # Hedef aralığını göster
             self.ax.axhspan(70, 180, color='#27ae60', alpha=0.1, label='Hedef Aralık')
             self.ax.legend(loc='upper right', facecolor='#2c3e50', labelcolor='white')
             
-            # Grafik başlığı
             self.ax.set_title('Günlük Kan Şekeri Takibi', color='white', pad=20, fontsize=14)
             
-            # Grafik kenarlarını ayarla
             self.ax.spines['bottom'].set_color('white')
             self.ax.spines['top'].set_color('white')
             self.ax.spines['left'].set_color('white')
