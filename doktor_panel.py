@@ -162,6 +162,11 @@ class HastaListePenceresi(QWidget):
         self.grafik_goster_btn.setStyleSheet(Styles.get_button_style())
         self.grafik_goster_btn.clicked.connect(self.grafik_goster)
         
+        # Egzersiz görüntüleme butonu
+        self.egzersiz_goruntule_btn = QPushButton("🏃 Egzersiz Geçmişi")
+        self.egzersiz_goruntule_btn.setStyleSheet(Styles.get_button_style())
+        self.egzersiz_goruntule_btn.clicked.connect(self.egzersiz_goruntule)
+        
         self.olcum_ekle_btn.setEnabled(False)
         self.goruntule_btn.setEnabled(False)
         self.diyet_goruntule_btn.setEnabled(False)
@@ -170,7 +175,8 @@ class HastaListePenceresi(QWidget):
         self.belirti_goruntule_btn.setEnabled(False)
         self.diyet_egzersiz_btn.setEnabled(False)
         self.grafik_goster_btn.setEnabled(False)
-        
+        self.egzersiz_goruntule_btn.setEnabled(False)  # Egzersiz butonu başlangıçta devre dışı
+
         self.detay_layout.addWidget(self.olcum_ekle_btn)
         self.detay_layout.addWidget(self.goruntule_btn)
         self.detay_layout.addWidget(self.diyet_goruntule_btn)
@@ -178,7 +184,8 @@ class HastaListePenceresi(QWidget):
         self.detay_layout.addWidget(self.belirti_ekle_btn)
         self.detay_layout.addWidget(self.belirti_goruntule_btn)
         self.detay_layout.addWidget(self.diyet_egzersiz_btn)
-        self.detay_layout.addWidget(self.grafik_goster_btn)  # Yeni buton eklendi
+        self.detay_layout.addWidget(self.grafik_goster_btn)
+        self.detay_layout.addWidget(self.egzersiz_goruntule_btn)  # Yeni buton eklendi
 
         baslik_label = QLabel("🩺 Hastalarım")
         baslik_label.setStyleSheet("font-size: 28px; font-weight: bold; color: #2c3e50;")
@@ -913,6 +920,7 @@ class HastaListePenceresi(QWidget):
             self.belirti_goruntule_btn.setEnabled(True)
             self.diyet_egzersiz_btn.setEnabled(True)
             self.grafik_goster_btn.setEnabled(True)  # Yeni buton aktif edildi
+            self.egzersiz_goruntule_btn.setEnabled(True)  # Egzersiz butonu aktif edildi
 
 
 
@@ -1993,6 +2001,125 @@ class HastaListePenceresi(QWidget):
             
         except Exception as e:
             QMessageBox.critical(self, "Hata", f"Grafikler oluşturulurken bir hata oluştu: {str(e)}")
+
+    def egzersiz_goruntule(self):
+        if not self.secili_hasta_id:
+            QMessageBox.warning(self, "Uyarı", "Lütfen önce bir hasta seçin.")
+            return
+        
+        egzersizler = self.db.get_patient_exercises(self.secili_hasta_id)
+        
+        if not egzersizler:
+            QMessageBox.information(self, "Bilgi", "Bu hasta için kaydedilmiş egzersiz bulunmamaktadır.")
+            return
+        
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Hasta Egzersiz Geçmişi")
+        dialog.setMinimumSize(600, 400)
+        
+        layout = QVBoxLayout()
+        
+        hasta = self.db.get_user_by_id(self.secili_hasta_id)
+        if hasta:
+            baslik = QLabel(f"{hasta[2]} {hasta[3]} - Egzersiz Geçmişi")
+        else:
+            baslik = QLabel("Egzersiz Geçmişi")
+        baslik.setStyleSheet("font-size: 18px; font-weight: bold; margin-bottom: 10px;")
+        layout.addWidget(baslik)
+        
+        # İstatistik kartı
+        istatistik_frame = QFrame()
+        istatistik_frame.setStyleSheet("""
+            background-color: white;
+            border-radius: 9px;
+            border: 1px solid #e0e0e0;
+            padding: 10px;
+            margin-bottom: 5px;
+        """)
+        istatistik_layout = QVBoxLayout(istatistik_frame)
+        
+        # Egzersiz yapılma oranı hesaplama
+        egzersiz_toplam = len(egzersizler) if egzersizler else 0
+        egzersiz_yapilan = sum(1 for e in egzersizler if e[4]) if egzersizler else 0
+        egzersiz_uyum_yuzdesi = int((egzersiz_yapilan / egzersiz_toplam) * 100) if egzersiz_toplam > 0 else 0
+        
+        # Uyum oranı başlık
+        oran_baslik = QLabel("🏃 Egzersiz Uyum Oranı:")
+        oran_baslik.setStyleSheet("font-size: 16px; font-weight: bold; color: #333;")
+        istatistik_layout.addWidget(oran_baslik)
+        
+        # İlerleme çubuğu
+        oran_bar = QProgressBar()
+        oran_bar.setValue(egzersiz_uyum_yuzdesi)
+        oran_bar.setFormat("%p%")
+        oran_bar.setAlignment(Qt.AlignCenter)
+        
+        # Renklendirme
+        if egzersiz_uyum_yuzdesi >= 80:
+            renk = "#27ae60"  # Yeşil
+        elif egzersiz_uyum_yuzdesi >= 50:
+            renk = "#f39c12"  # Turuncu
+        else:
+            renk = "#e74c3c"  # Kırmızı
+            
+        oran_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid #e0e0e0;
+                border-radius: 5px;
+                text-align: center;
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                height: 25px;
+                background-color: #f5f5f5;
+            }}
+            QProgressBar::chunk {{
+                background-color: {renk};
+                border-radius: 4px;
+            }}
+        """)
+        istatistik_layout.addWidget(oran_bar)
+        
+        # Detay bilgisi
+        oran_detay = QLabel(f"Toplam {egzersiz_toplam} egzersizden {egzersiz_yapilan} tanesi tamamlandı.")
+        oran_detay.setStyleSheet("color: #666; margin-top: 5px;")
+        istatistik_layout.addWidget(oran_detay)
+        
+        layout.addWidget(istatistik_frame)
+        
+        liste = QListWidget()
+        liste.setStyleSheet("""
+            QListWidget {
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                font-size: 14px;
+                padding: 5px;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #eee;
+            }
+        """)
+        
+        for egzersiz in egzersizler:
+            tarih = egzersiz[2].strftime("%d.%m.%Y")
+            egzersiz_turu = egzersiz[3]
+            egzersiz_yapildi = egzersiz[4]
+            
+            emoji = "✅" if egzersiz_yapildi else "❌"
+            item_text = f"{tarih} - {egzersiz_turu} {emoji}"
+            liste.addItem(item_text)
+        
+        layout.addWidget(liste)
+        
+        kapat_btn = QPushButton("Kapat")
+        kapat_btn.setStyleSheet(Styles.get_button_style())
+        kapat_btn.clicked.connect(dialog.close)
+        
+        layout.addWidget(kapat_btn, alignment=Qt.AlignCenter)
+        
+        dialog.setLayout(layout)
+        dialog.exec_()
 
 class HastaEklePenceresi(QWidget): 
     def __init__(self, doktor, db):
