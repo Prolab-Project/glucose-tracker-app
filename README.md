@@ -71,8 +71,11 @@ pip install -r requirements.txt
 ```bash
 python models.py
 ```
-
-6. Uygulamayı başlatın:
+6. Sisteme ilk doktor kayıdınızı manuel olarak ekleyin:
+```bash
+python main.py
+```
+7. Uygulamayı başlatın:
 ```bash
 python login.py
 ```
@@ -112,6 +115,7 @@ Proje aşağıdaki tabloları içerir:
 - Kullanıcı oturumları güvenli bir şekilde yönetilir
 - Hassas sağlık verileri şifrelenerek saklanır
 - PostgreSQL'in güvenlik özellikleri kullanılır
+- 
 
 ## 🤝 Katkıda Bulunma
 
@@ -120,6 +124,8 @@ Proje aşağıdaki tabloları içerir:
 3. Değişikliklerinizi commit edin (`git commit -am 'Yeni özellik: Açıklama'`)
 4. Dalınıza push yapın (`git push origin yeni-ozellik`)
 5. Bir Pull Request oluşturun
+
+
 
 ## 📝 Lisans
 
@@ -130,3 +136,13 @@ Bu proje MIT lisansı altında lisanslanmıştır. Detaylar için [LICENSE](LICE
 Proje Sahibi - [bedirhanereen@gmail.com]
 
 Proje Linki: [https://github.com/bedirhaneren/glucose-tracker-app](https://github.com/kullaniciadi/glucose-tracker-app)
+
+## 📸 Ekran Görüntüleri
+
+![image](https://github.com/user-attachments/assets/9f99e89c-28cb-4022-9911-574a247f0feb)
+![image](https://github.com/user-attachments/assets/d66d0d98-2711-4006-9211-8b108b484c3b)
+![image](https://github.com/user-attachments/assets/86387215-f290-49be-b720-779c75a35f31)
+![image](https://github.com/user-attachments/assets/77fbc98d-5226-43df-89ce-34b3e78241ef)
+
+
+
